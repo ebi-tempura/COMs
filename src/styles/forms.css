@@ -1,0 +1,101 @@
+  
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+.form-group label {
+    font-size: 14px;
+    font-weight: 750;
+    color: #1e293b;
+  }
+  
+.form-group label::first-letter {
+    color: inherit;
+  }
+  
+.form-group input,
+.form-group select,
+.form-group textarea,
+.table-tools input,
+.table-tools select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border: 1px solid #d4dce8;
+    border-radius: 7px;
+    background: white;
+    color: #0f172a;
+    outline: none;
+  }
+  
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+    color: #94a3b8;
+  }
+  
+.form-group textarea {
+    min-height: 122px;
+    resize: vertical;
+  }
+  
+.form-wide {
+    grid-column: span 2;
+  }
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }  
+  
+.attachment-box {
+    grid-column: span 2;
+    min-height: 122px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+    padding: 16px;
+    color: #64748b;
+    text-align: center;
+  }
+  
+.attachment-box strong {
+    display: block;
+    text-align: left;
+    color: #334155;
+    margin-bottom: 20px;
+  }
+  
+.attachment-box p {
+    margin: 0 0 8px;
+  }
+  
+.attachment-box button {
+    border: 1px solid #d4dce8;
+    background: white;
+    color: #2563eb;
+    padding: 8px 14px;
+    border-radius: 7px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  
+.attachment-box small {
+    display: block;
+    margin-top: 8px;
+  }
+  
+.form-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+.form-wide {
+  grid-column: span 2;
+}
+
+.attachment-box {
+    grid-column: span 1;
+  }  

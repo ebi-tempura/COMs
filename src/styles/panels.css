@@ -1,0 +1,44 @@
+
+.panel {
+    background: white;
+    border: 1px solid #dfe6f0;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+  }
+  
+.panel-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  
+.panel-icon {
+    width: 25px;
+    height: 34px;
+    border-radius: 8px;
+    background: #eef4ff;
+    display: grid;
+    place-items: center;
+  }
+  
+.panel h2 {
+    margin: 0;
+    font-size: 18px;
+  }
+  .card {
+    background: white;
+    border: 1px solid #dfe6f0;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  
+  .card-title {
+    margin: 0 0 18px;
+    font-size: 18px;
+    color: #0f172a;
+  }

@@ -1,0 +1,141 @@
+/* TABLE */
+
+.table-panel {
+    padding: 0;
+    overflow: hidden;
+  }
+  
+.table-header {
+    padding: 16px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+.table-header h2 {
+    display: inline-block;
+    margin: 0;
+    font-size: 19px;
+  }
+  
+.table-header span {
+    margin-left: 10px;
+    background: #f1f5f9;
+    color: #64748b;
+    border-radius: 999px;
+    padding: 4px 9px;
+    font-size: 12px;
+    font-weight: 750;
+  }
+  
+.table-tools {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  
+.table-tools input {
+    width: 255px;
+  }
+  
+.table-tools select {
+    width: 170px;
+  }
+  
+.table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+  }
+  
+.work-orders-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  
+.work-orders-table th {
+    background: #f8fafc;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 800;
+    text-align: left;
+    padding: 13px 18px;
+    border-top: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+  }
+  
+.work-orders-table td {
+    padding: 13px 18px;
+    border-bottom: 1px solid #e2e8f0;
+    color: #0f172a;
+    white-space: nowrap;
+    max-width: 85px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+.icon-actions {
+    display: flex;
+    gap: 8px;
+  }
+  
+.icon-actions button {
+    width: 35px;
+    height: 35px;
+    border: 1px solid #d4dce8;
+    background: white;
+    border-radius: 7px;
+    cursor: pointer;
+  }
+    
+.table-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+  }
+  
+.table-footer p {
+    margin: 0;
+    color: #64748b;
+    font-size: 13px;
+  }
+  
+.pagination {
+    display: flex;
+    gap: 8px;
+  }
+  
+.pagination button {
+    min-width: 35px;
+    height: 35px;
+    border: 1px solid #d4dce8;
+    background: white;
+    border-radius: 7px;
+    cursor: pointer;
+  }
+  
+.pagination .active-page {
+    background: #2563eb;
+    color: white;
+    border-color: #2563eb;
+  }
+.suppliers-table {
+    width: 50%;
+    border-collapse: collapse;
+  }
+  
+.suppliers-table th,
+.suppliers-table td {
+    padding: 12px;
+    border-bottom: 1px solid #e2e8f0;
+    text-align: left;
+  }
+.supplier-directory {
+    background: white;
+    border: 1px solid #dfe6f0;
+    border-radius: 8px;
+    padding: 18px;
+  }  
+  
