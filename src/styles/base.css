@@ -49,7 +49,10 @@ textarea {
     gap: 16px;
   }
   
-.login-form label {
+.login-form >  label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
     font-size: 13px;
     font-weight: 700;
   }
@@ -60,4 +63,13 @@ textarea {
     border-radius: 8px;
   }
   
-  
+  .login-options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}

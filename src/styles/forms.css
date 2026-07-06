@@ -2,13 +2,14 @@
 .form-group {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    
   }
   
 .form-group label {
     font-size: 14px;
     font-weight: 750;
     color: #1e293b;
+    gap: 6px;
   }
   
 .form-group label::first-letter {
@@ -23,6 +24,7 @@
     width: 100%;
     box-sizing: border-box;
     padding: 10px 12px;
+    gap: 10px;
     border: 1px solid #d4dce8;
     border-radius: 7px;
     background: white;

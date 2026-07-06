@@ -20,6 +20,7 @@ function AppLayout() {
         </div>
 
         <nav className="sidebar-nav">
+          <NavLink to="/Dashbord">Dashboard</NavLink>
           <NavLink to="/work-orders">Work Orders</NavLink>
           <NavLink to="/suppliers">Suppliers</NavLink>
           <NavLink to="/residents">Residents</NavLink>

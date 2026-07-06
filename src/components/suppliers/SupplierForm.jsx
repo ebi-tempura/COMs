@@ -27,9 +27,11 @@ function SupplierForm({ onCreateSupplier }) {
     const CurrentYear  = new Date(). getFullYear();
 
     const newSupplier = {
-      id: `SUP-${CurrentYear}-${Date.now()}`,
+      id: `SUP-${CurrentYear}-${String(Date.now()).slice(-4)}`,
       ...formData,
     };
+
+   
 
     onCreateSupplier(newSupplier);
 
@@ -120,6 +122,13 @@ function SupplierForm({ onCreateSupplier }) {
       <div className="form-group">
         <label>Notes</label>
         <textarea name="notes" value={formData.notes} onChange={handleChange} />
+      </div>
+
+      <div className="attachment-box form-wide">
+        <strong>Attachments</strong>
+        <p>Drag and drop files here or</p>
+        <button type="button">Browse Files</button>
+        <small>PDF, JPG, PNG max. 10MB each</small>
       </div>
   
       <div className="form-actions">

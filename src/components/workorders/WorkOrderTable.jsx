@@ -5,7 +5,7 @@ function getStatusClass(status) {
 function WorkOrderTable({ workOrders }) {
   return (
     <div className="table-wrapper">
-      <table className="work-orders-table">
+      <table className="data-table">
         <thead>
           <tr>
             <th>ID</th>
@@ -16,8 +16,7 @@ function WorkOrderTable({ workOrders }) {
             <th>Amount (MXN)</th>
             <th>Status</th>
             <th>Priority</th>
-            <th>Target Date</th>
-            <th>Actions</th>
+            <th>Actions</th>   
           </tr>
         </thead>
 
@@ -39,7 +38,6 @@ function WorkOrderTable({ workOrders }) {
                 <span className={`priority-dot priority-${workOrder.priority.toLowerCase()}`} />
                 {workOrder.priority}
               </td>
-              <td>{workOrder.targetDate || "—"}</td>
               <td>
                 <div className="icon-actions">
                   <button>👁</button>

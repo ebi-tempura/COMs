@@ -47,7 +47,7 @@ function WorkOrders() {
   });
 
   return (
-    <div className="work-orders-page">
+    <div className="page-container">
       <div className="page-header">
         <div>
           <h1>Work Orders</h1>
@@ -56,7 +56,7 @@ function WorkOrders() {
 
         <div className="header-actions">
           <span className="notification">
-            🔔<b>3</b>
+            <b>3</b>
           </span>
 
           <Button
@@ -82,7 +82,7 @@ function WorkOrders() {
       )}
 
       <Card>
-        <div className="table-header">
+        <div className="panel-title">
           <div>
             <h2>Work Orders</h2>
             <span>{filteredWorkOrders.length} Total</span>

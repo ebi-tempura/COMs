@@ -1,10 +1,15 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-function Login() {
+function Login({ setUserEmail }) {
   const navigate = useNavigate();
+  const [email, setEmail] = useState("");
 
   function handleSubmit(event) {
     event.preventDefault();
+
+    setUserEmail(email);
+
     navigate("/work-orders");
   }
 
@@ -19,7 +24,13 @@ function Login() {
         <form className="login-form" onSubmit={handleSubmit}>
           <label>
             Email
-            <input type="email" placeholder="admin@condominio.com" required />
+            <input
+              type="email"
+              placeholder="admin@condominio.com"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
           </label>
 
           <label>

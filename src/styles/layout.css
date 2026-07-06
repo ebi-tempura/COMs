@@ -121,6 +121,22 @@
     font-weight: 600;
   }
   
-  .logout-button:hover {
+.logout-button:hover {
     background: rgba(248, 58, 58, 0.1);
   }
+
+.page-container {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+.work-orders-page {
+  width: 100%;
+  max-width: 900px;   /* Try 1400 first */
+  margin: 0 auto;      /* Center the page */
+  padding: 24px;
+  box-sizing: border-box;
+}

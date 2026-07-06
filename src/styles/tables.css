@@ -1,5 +1,37 @@
 /* TABLE */
 
+.data-table {
+  width: 100%;
+  min-width: 1000px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table th {
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: left;
+  padding: 13px 18px;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: 13px 18px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.table-wrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 .table-panel {
     padding: 0;
     overflow: hidden;
@@ -41,40 +73,7 @@
 .table-tools select {
     width: 170px;
   }
-  
-.table-wrapper {
-    width: 100%;
-    overflow-x: auto;
-  }
-  
-.work-orders-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-  }
-  
-.work-orders-table th {
-    background: #f8fafc;
-    color: #334155;
-    font-size: 12px;
-    font-weight: 800;
-    text-align: left;
-    padding: 13px 18px;
-    border-top: 1px solid #e2e8f0;
-    border-bottom: 1px solid #e2e8f0;
-    white-space: nowrap;
-  }
-  
-.work-orders-table td {
-    padding: 13px 18px;
-    border-bottom: 1px solid #e2e8f0;
-    color: #0f172a;
-    white-space: nowrap;
-    max-width: 85px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+
 .icon-actions {
     display: flex;
     gap: 8px;
@@ -121,17 +120,7 @@
     color: white;
     border-color: #2563eb;
   }
-.suppliers-table {
-    width: 50%;
-    border-collapse: collapse;
-  }
   
-.suppliers-table th,
-.suppliers-table td {
-    padding: 12px;
-    border-bottom: 1px solid #e2e8f0;
-    text-align: left;
-  }
 .supplier-directory {
     background: white;
     border: 1px solid #dfe6f0;

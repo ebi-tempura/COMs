@@ -27,6 +27,7 @@
     margin: 0;
     font-size: 18px;
   }
+
   .card {
     background: white;
     border: 1px solid #dfe6f0;
@@ -34,7 +35,10 @@
     padding: 20px;
     box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
     margin-bottom: 20px;
+    margin-left: -10px  ;
     overflow: hidden;
+    width: 107%;
+    box-sizing: border-box;
   }
   
   .card-title {

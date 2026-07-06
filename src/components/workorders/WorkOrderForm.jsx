@@ -151,6 +151,16 @@ function WorkOrderForm({ onCreateWorkOrder, onCancel }) {
         />
       </div>
 
+      <div className="form-group">
+        <label>Supplier</label>
+        <input
+          name="supplier"
+          type=""
+          value={formData.targetDate}
+          onChange={handleChange}
+        />
+      </div>
+
       <div className="form-group form-wide">
         <label>Description *</label>
         <textarea
