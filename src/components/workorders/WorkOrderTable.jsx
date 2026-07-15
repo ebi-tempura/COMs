@@ -1,8 +1,12 @@
+import Can from "../security/Can"
+
+import{ACTIONS, MODULES} from "../../security/constants"
+
 function getStatusClass(status) {
   return status.toLowerCase().replaceAll(" ", "-");
 }
 
-function WorkOrderTable({ workOrders }) {
+function WorkOrderTable({ workOrders, onEditWorkOrder, onInactiveWorkOrder }) {
   return (
     <div className="table-wrapper">
       <table className="data-table">
@@ -40,8 +44,27 @@ function WorkOrderTable({ workOrders }) {
               </td>
               <td>
                 <div className="icon-actions">
-                  <button>👁</button>
+                  <Can module={MODULES.WORK_ORDERS} action={ACTIONS.VIEW}>
+                    <button type="button">👁</button>
+                  </Can>
+                  
                   <button>⋮</button>
+                  
+                  <Can module={MODULES.WORK_ORDERS} action={ACTIONS.EDIT}>
+                    <button type="button" onClick={()=> onEditWorkOrder(workOrder)}
+                    >EDIT
+                    </button>
+                  </Can>
+
+                  <Can module={MODULES.WORK_ORDERS} action={ACTIONS.DELETE_INACTIVE}>
+                    <button
+                    type="button"
+                    onClick={() => onInactiveWorkOrder(workOrder.id)}
+                    >
+                      Inactive
+                    </button>
+                  </Can>
+                
                 </div>
               </td>
             </tr>

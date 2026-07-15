@@ -21,3 +21,22 @@
   font-weight: 650;
   cursor: pointer;
 }
+
+.icon-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+}
+
+.table-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}

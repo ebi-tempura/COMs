@@ -25,6 +25,7 @@ function AppLayout() {
           <NavLink to="/suppliers">Suppliers</NavLink>
           <NavLink to="/residents">Residents</NavLink>
           <NavLink to="/reports">Reports</NavLink>
+          <NavLink to="/documents">Documents</NavLink>
           <NavLink to="/settings">Settings</NavLink>
         </nav>
 

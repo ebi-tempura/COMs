@@ -3,6 +3,9 @@ import Button from "../../components/common/Button";
 import Card from "../../components/common/Card";
 import WorkOrderForm from "../../components/workorders/WorkOrderForm";
 import WorkOrderTable from "../../components/workorders/WorkOrderTable";
+import Can from "../../components/security/Can";
+
+import { ACTIONS,MODULES } from "../../security/constants";
 
 const STATUSES = {
   DRAFT: "Draft",
@@ -58,16 +61,18 @@ function WorkOrders() {
           <span className="notification">
             <b>3</b>
           </span>
-
+        <Can module={MODULES.WORK_ORDERS} action={ACTIONS.CREATE}>
           <Button
             className="primary-action-button"
             onClick={() => setShowForm((current) => !current)}
           >
             + New Work Order
           </Button>
+          </Can>
+
         </div>
       </div>
-
+      <Can module={MODULES.WORK_ORDERS} action={ACTIONS.CREATE}>
       {showForm && (
         <Card>
           <div className="panel-title">
@@ -80,6 +85,7 @@ function WorkOrders() {
           />
         </Card>
       )}
+      </Can>
 
       <Card>
         <div className="panel-title">
