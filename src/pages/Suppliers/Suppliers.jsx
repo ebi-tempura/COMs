@@ -4,6 +4,7 @@ import Card from "../../components/common/Card";
 import SupplierTable from "../../components/suppliers/SupplierTable";
 import SupplierForm from "../../components/suppliers/SupplierForm";
 import Can from "../../components/security/Can"
+import { submitSupplier } from "../../workflows/supplierWorkflow";
 
 import { ACTIONS, MODULES, ROLES, SUPPLIER_STATUS } from "../../security/constants";
 import { useAuth } from "../../auth/AuthContext";
@@ -198,25 +199,7 @@ const filteredSuppliers = supplierList.filter((supplier) => {
     setSupplierList((current) =>
       current.map((supplier) =>
         supplier.id === supplierId
-          ? {
-              ...supplier,
-              status: SUPPLIER_STATUS.PENDING_RFC_VALIDATION,
-              submittedAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              approvalHistory: [
-                ...(supplier.approvalHistory || []),
-                {
-                  action: ACTIONS.SUBMIT,
-                  fromStatus: supplier.status,
-                  toStatus: SUPPLIER_STATUS.PENDING_RFC_VALIDATION,
-                  byUserId: user.id,
-                  byUserName: user.name,
-                  byRole: user.role,
-                  at: new Date().toISOString(),
-                  comment: "",
-                },
-              ],
-            }
+          ? submitSupplier(supplier, user)
           : supplier
       )
     );
