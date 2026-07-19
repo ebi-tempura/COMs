@@ -66,6 +66,7 @@ function WorkOrderForm({ onCreateWorkOrder, onCancel }) {
           name="supplier"
           value={formData.supplier}
           onChange={handleChange}
+          placeholder="Supplier"
           required
         >
           <option value="">Select supplier</option>
@@ -90,11 +91,21 @@ function WorkOrderForm({ onCreateWorkOrder, onCancel }) {
       </div>
 
       <div className="form-group">
-        <label>Priority</label>
+        <label>Priority *</label>
         <select name="priority" value={formData.priority} onChange={handleChange}>
+          <option value="">Select priority</option>
           <option>Low</option>
           <option>Medium</option>
           <option>High</option>
+        </select>
+      </div>
+
+      <div className="form-group">
+        <label>Type*</label>
+        <select name="Work order type" value={formData.type} onChange={handleChange} required>
+        <option value="">Select type</option>
+          <option>Emergency</option>
+          <option>Normal</option>
         </select>
       </div>
 
@@ -146,16 +157,6 @@ function WorkOrderForm({ onCreateWorkOrder, onCancel }) {
         <input
           name="targetDate"
           type="date"
-          value={formData.targetDate}
-          onChange={handleChange}
-        />
-      </div>
-
-      <div className="form-group">
-        <label>Supplier</label>
-        <input
-          name="supplier"
-          type=""
           value={formData.targetDate}
           onChange={handleChange}
         />

@@ -157,3 +157,11 @@ import {
       user,
     });
   }
+
+  export const SupplierWorkflow = {
+    submit: submitSupplier,
+    applyRfcValidation,
+    approve: approveSupplier,
+    reject: rejectSupplier,
+    resubmit: resubmitSupplier,
+  };

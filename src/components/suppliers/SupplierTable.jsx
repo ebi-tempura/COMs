@@ -14,7 +14,12 @@ function SupplierTable({
   onRejectSupplier,
   onResubmitSupplier,
 }) {
-  
+
+
+function getStatusClass(status) {
+    return status.toLowerCase().replaceAll(" ", "-");
+  }
+
   const { user } = useAuth();
 
   return (
@@ -39,7 +44,12 @@ function SupplierTable({
               <td>{supplier.supplierType}</td>
               <td>{supplier.name}</td>
               <td>{supplier.serviceCategory}</td>
-              <td>{supplier.status}</td>
+              <td>
+                <span
+                 className={`status-badge status-${getStatusClass(supplier.status)}`}>
+                {supplier.status}
+                </span>
+                </td>
               <td>{supplier.rfc}</td>
 
               <td>

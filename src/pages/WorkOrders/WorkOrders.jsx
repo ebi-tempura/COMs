@@ -57,20 +57,6 @@ function WorkOrders() {
           <p>Create, approve, and track condominium maintenance work.</p>
         </div>
 
-        <div className="header-actions">
-          <span className="notification">
-            <b>3</b>
-          </span>
-        <Can module={MODULES.WORK_ORDERS} action={ACTIONS.CREATE}>
-          <Button
-            className="primary-action-button"
-            onClick={() => setShowForm((current) => !current)}
-          >
-            + New Work Order
-          </Button>
-          </Can>
-
-        </div>
       </div>
       <Can module={MODULES.WORK_ORDERS} action={ACTIONS.CREATE}>
       {showForm && (

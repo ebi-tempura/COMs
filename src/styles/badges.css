@@ -23,12 +23,18 @@
     background: #ffedd5;
     color: #c2410c;
   }
-  
+
+.status-Pending-RFC-Validation	 {
+    background: #ffedd5;
+    color: #c2410c;
+  }  
+
 .status-rejected {
     background: #fee2e2;
     color: #dc2626;
   }
-  
+
+/* Only the dots*/  
 .priority-dot {
     width: 8px;
     height: 8px;
