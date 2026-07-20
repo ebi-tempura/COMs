@@ -1,124 +1,205 @@
 import { useState } from "react";
-import Button from "../../components/common/Button";
+
 import Card from "../../components/common/Card";
 import WorkOrderForm from "../../components/workorders/WorkOrderForm";
 import WorkOrderTable from "../../components/workorders/WorkOrderTable";
 import Can from "../../components/security/Can";
 
-import { ACTIONS,MODULES } from "../../security/constants";
+import { useAuth } from "../../auth/AuthContext";
 
-const STATUSES = {
-  DRAFT: "Draft",
-  PENDING: "Pending Approval",
-  APPROVED: "Approved",
-  IN_PROGRESS: "In Progress",
-  COMPLETED: "Completed",
-  REJECTED: "Rejected",
-};
+import {
+    ACTIONS,
+    MODULES,
+    WORK_ORDER_STATUS,
+} from "../../security/constants";
+
+import { submitWorkOrder } from "../../workflows/workOrderWorkflow";
 
 const initialWorkOrders = [
-  {
-    id: "WO-2025-0012",
-    title: "Fix lobby light",
-    category: "Electrical",
-    supplier: "Electro Services SA",
-    requestedBy: "Admin User",
-    amount: 1200,
-    status: STATUSES.DRAFT,
-    priority: "Medium",
-    targetDate: "",
-  },
+    {
+        id: "WO-2025-0012",
+        title: "Fix lobby light",
+        category: "Electrical",
+        supplier: "Electro Services SA",
+        requestedBy: "Admin User",
+        amount: 1200,
+        status: WORK_ORDER_STATUS.DRAFT,
+        priority: "Medium",
+        targetDate: "",
+        createdBy: "admin-1",
+        createdByName: "Admin User",
+        version: 1,
+        approvalHistory: [],
+    },
 ];
 
 function WorkOrders() {
-  const [workOrders, setWorkOrders] = useState(initialWorkOrders);
-  const [showForm, setShowForm] = useState(true);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
+    const { user } = useAuth();
 
-  function handleCreateWorkOrder(newWorkOrder) {
-    setWorkOrders((current) => [newWorkOrder, ...current]);
-  }
+    const [workOrders, setWorkOrders] =
+        useState(initialWorkOrders);
 
-  const filteredWorkOrders = workOrders.filter((workOrder) => {
-    const text = `${workOrder.id} ${workOrder.title} ${workOrder.supplier}`.toLowerCase();
-    const matchesSearch = text.includes(search.toLowerCase());
-    const matchesStatus =
-      statusFilter === "All" || workOrder.status === statusFilter;
+    const [showForm, setShowForm] = useState(true);
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] =
+        useState("All");
 
-    return matchesSearch && matchesStatus;
-  });
+    function handleCreateWorkOrder(newWorkOrder) {
+        const preparedWorkOrder = {
+            ...newWorkOrder,
+            createdBy: user.id,
+            createdByName: user.name,
+            version: 1,
+            approvalHistory: [],
+        };
 
-  return (
-    <div className="page-container">
-      <div className="page-header">
-        <div>
-          <h1>Work Orders</h1>
-          <p>Create, approve, and track condominium maintenance work.</p>
-        </div>
+        setWorkOrders((current) => [
+            preparedWorkOrder,
+            ...current,
+        ]);
+    }
 
-      </div>
-      <Can module={MODULES.WORK_ORDERS} action={ACTIONS.CREATE}>
-      {showForm && (
-        <Card>
-          <div className="panel-title">
-            <h2>Create New Work Order</h2>
-          </div>
+    function handleSubmitWorkOrder(workOrderId) {
+        try {
+            setWorkOrders((current) =>
+                current.map((workOrder) => {
+                    if (workOrder.id !== workOrderId) {
+                        return workOrder;
+                    }
 
-          <WorkOrderForm
-            onCreateWorkOrder={handleCreateWorkOrder}
-            onCancel={() => setShowForm(false)}
-          />
-        </Card>
-      )}
-      </Can>
+                    return submitWorkOrder(workOrder, user);
+                })
+            );
+        } catch (error) {
+            alert(error.message);
+        }
+    }
 
-      <Card>
-        <div className="panel-title">
-          <div>
-            <h2>Work Orders</h2>
-            <span>{filteredWorkOrders.length} Total</span>
-          </div>
+    const filteredWorkOrders = workOrders.filter(
+        (workOrder) => {
+            const text =
+                `${workOrder.id} ${workOrder.title} ${workOrder.supplier}`.toLowerCase();
 
-          <div className="table-tools">
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search work orders..."
-            />
+            const matchesSearch = text.includes(
+                search.toLowerCase()
+            );
 
-            <select
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
+            const matchesStatus =
+                statusFilter === "All" ||
+                workOrder.status === statusFilter;
+
+            return matchesSearch && matchesStatus;
+        }
+    );
+
+    return (
+        <div className="page-container">
+            <div className="page-header">
+                <div>
+                    <h1>Work Orders</h1>
+                    <p>
+                        Create, approve, and track condominium
+                        maintenance work.
+                    </p>
+                </div>
+            </div>
+
+            <Can
+                module={MODULES.WORK_ORDERS}
+                action={ACTIONS.CREATE}
             >
-              <option value="All">All Statuses</option>
-              {Object.values(STATUSES).map((status) => (
-                <option key={status}>{status}</option>
-              ))}
-            </select>
+                {showForm && (
+                    <Card>
+                        <div className="panel-title">
+                            <h2>Create New Work Order</h2>
+                        </div>
 
-            <button className="secondary-button">Filter</button>
-            <button className="secondary-button">Export</button>
-          </div>
+                        <WorkOrderForm
+                            onCreateWorkOrder={
+                                handleCreateWorkOrder
+                            }
+                            onCancel={() => setShowForm(false)}
+                        />
+                    </Card>
+                )}
+            </Can>
+
+            <Card>
+                <div className="panel-title">
+                    <div>
+                        <h2>Work Orders</h2>
+                        <span>
+                            {filteredWorkOrders.length} Total
+                        </span>
+                    </div>
+
+                    <div className="table-tools">
+                        <input
+                            value={search}
+                            onChange={(event) =>
+                                setSearch(event.target.value)
+                            }
+                            placeholder="Search work orders..."
+                        />
+
+                        <select
+                            value={statusFilter}
+                            onChange={(event) =>
+                                setStatusFilter(event.target.value)
+                            }
+                        >
+                            <option value="All">
+                                All Statuses
+                            </option>
+
+                            {Object.values(
+                                WORK_ORDER_STATUS
+                            ).map((status) => (
+                                <option
+                                    key={status}
+                                    value={status}
+                                >
+                                    {status}
+                                </option>
+                            ))}
+                        </select>
+
+                        <button className="secondary-button">
+                            Filter
+                        </button>
+
+                        <button className="secondary-button">
+                            Export
+                        </button>
+                    </div>
+                </div>
+
+                <WorkOrderTable
+                    workOrders={filteredWorkOrders}
+                    onSubmitWorkOrder={
+                        handleSubmitWorkOrder
+                    }
+                />
+
+                <div className="table-footer">
+                    <p>
+                        Showing 1 to{" "}
+                        {filteredWorkOrders.length} of{" "}
+                        {workOrders.length} results
+                    </p>
+
+                    <div className="pagination">
+                        <button>‹</button>
+                        <button className="active-page">
+                            1
+                        </button>
+                        <button>2</button>
+                        <button>›</button>
+                    </div>
+                </div>
+            </Card>
         </div>
-
-        <WorkOrderTable workOrders={filteredWorkOrders} />
-
-        <div className="table-footer">
-          <p>
-            Showing 1 to {filteredWorkOrders.length} of {workOrders.length} results
-          </p>
-
-          <div className="pagination">
-            <button>‹</button>
-            <button className="active-page">1</button>
-            <button>2</button>
-            <button>›</button>
-          </div>
-        </div>
-      </Card>
-    </div>
-  );
+    );
 }
 
-export default WorkOrders;
+export default WorkOrders;  

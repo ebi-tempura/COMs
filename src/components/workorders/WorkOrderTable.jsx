@@ -1,78 +1,141 @@
-import Can from "../security/Can"
+import Can from "../security/Can";
 
-import{ACTIONS, MODULES} from "../../security/constants"
+import {
+    ACTIONS,
+    MODULES,
+    WORK_ORDER_STATUS,
+} from "../../security/constants";
 
 function getStatusClass(status) {
-  return status.toLowerCase().replaceAll(" ", "-");
+    return status.toLowerCase().replaceAll(" ", "-");
 }
 
-function WorkOrderTable({ workOrders, onEditWorkOrder, onInactiveWorkOrder }) {
-  return (
-    <div className="table-wrapper">
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Title</th>
-            <th>Category</th>
-            <th>Supplier</th>
-            <th>Requested By</th>
-            <th>Amount (MXN)</th>
-            <th>Status</th>
-            <th>Priority</th>
-            <th>Actions</th>   
-          </tr>
-        </thead>
+function WorkOrderTable({
+    workOrders,
+    onSubmitWorkOrder,
+    onEditWorkOrder,
+    onInactiveWorkOrder,
+}) {
+    return (
+        <div className="table-wrapper">
+            <table className="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Title</th>
+                        <th>Category</th>
+                        <th>Supplier</th>
+                        <th>Requested By</th>
+                        <th>Amount (MXN)</th>
+                        <th>Status</th>
+                        <th>Approval Route</th>
+                        <th>Priority</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
 
-        <tbody>
-          {workOrders.map((workOrder) => (
-            <tr key={workOrder.id}>
-              <td>{workOrder.id}</td>
-              <td>{workOrder.title}</td>
-              <td>{workOrder.category}</td>
-              <td>{workOrder.supplier}</td>
-              <td>{workOrder.requestedBy}</td>
-              <td>${workOrder.amount.toLocaleString()}</td>
-              <td>
-                <span className={`status-badge status-${getStatusClass(workOrder.status)}`}>
-                  {workOrder.status}
-                </span>
-              </td>
-              <td>
-                <span className={`priority-dot priority-${workOrder.priority.toLowerCase()}`} />
-                {workOrder.priority}
-              </td>
-              <td>
-                <div className="icon-actions">
-                  <Can module={MODULES.WORK_ORDERS} action={ACTIONS.VIEW}>
-                    <button type="button">👁</button>
-                  </Can>
-                  
-                  <button>⋮</button>
-                  
-                  <Can module={MODULES.WORK_ORDERS} action={ACTIONS.EDIT}>
-                    <button type="button" onClick={()=> onEditWorkOrder(workOrder)}
-                    >EDIT
-                    </button>
-                  </Can>
+                <tbody>
+                    {workOrders.map((workOrder) => (
+                        <tr key={workOrder.id}>
+                            <td>{workOrder.id}</td>
+                            <td>{workOrder.title}</td>
+                            <td>{workOrder.category}</td>
+                            <td>{workOrder.supplier}</td>
+                            <td>{workOrder.requestedBy}</td>
 
-                  <Can module={MODULES.WORK_ORDERS} action={ACTIONS.DELETE_INACTIVE}>
-                    <button
-                    type="button"
-                    onClick={() => onInactiveWorkOrder(workOrder.id)}
-                    >
-                      Inactive
-                    </button>
-                  </Can>
-                
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+                            <td>
+                                ${Number(workOrder.amount).toLocaleString()}
+                            </td>
+
+                            <td>
+                                <span
+                                    className={`status-badge status-${getStatusClass(
+                                        workOrder.status
+                                    )}`}
+                                >
+                                    {workOrder.status}
+                                </span>
+                            </td>
+
+                            <td>
+                                {workOrder.approvalRouteLabel ||
+                                    "Calculated on submission"}
+                            </td>
+
+                            <td>
+                                <span
+                                    className={`priority-dot priority-${workOrder.priority.toLowerCase()}`}
+                                />
+                                {workOrder.priority}
+                            </td>
+
+                            <td>
+                                <div className="icon-actions">
+                                    <Can
+                                        module={MODULES.WORK_ORDERS}
+                                        action={ACTIONS.VIEW}
+                                    >
+                                        <button type="button">View</button>
+                                    </Can>
+
+                                    {workOrder.status ===
+                                        WORK_ORDER_STATUS.DRAFT && (
+                                            <Can
+                                                module={MODULES.WORK_ORDERS}
+                                                action={ACTIONS.SUBMIT}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        onSubmitWorkOrder(workOrder.id)
+                                                    }
+                                                >
+                                                    Submit
+                                                </button>
+                                            </Can>
+                                        )}
+
+                                    {onEditWorkOrder &&
+                                        workOrder.status ===
+                                        WORK_ORDER_STATUS.DRAFT && (
+                                            <Can
+                                                module={MODULES.WORK_ORDERS}
+                                                action={ACTIONS.EDIT}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        onEditWorkOrder(workOrder)
+                                                    }
+                                                >
+                                                    Edit
+                                                </button>
+                                            </Can>
+                                        )}
+
+                                    {onInactiveWorkOrder && (
+                                        <Can
+                                            module={MODULES.WORK_ORDERS}
+                                            action={ACTIONS.DELETE_INACTIVE}
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    onInactiveWorkOrder(workOrder.id)
+                                                }
+                                            >
+                                                Inactive
+                                            </button>
+                                        </Can>
+                                    )}
+                                </div>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
 }
 
 export default WorkOrderTable;
