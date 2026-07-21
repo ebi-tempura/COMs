@@ -1,23 +1,24 @@
-import { useState } from "react";
 
 import Card from "../../components/common/Card";
-import WorkOrderForm from "../../components/workorders/WorkOrderForm";
-import WorkOrderTable from "../../components/workorders/WorkOrderTable";
 import Can from "../../components/security/Can";
 
-import { useAuth } from "../../auth/AuthContext";
+import WorkOrderForm from "../../components/workorders/WorkOrderForm";
+import WorkOrderTable from "../../components/workorders/WorkOrderTable";
+import WorkOrderDetailsPanel from "../../components/workorders/WorkOrderDetailsPanel";
 
+import { createAuditEvent } from "../../workflows/workflowEngine";
+import { useState } from "react";
+import { useAuth } from "../../auth/AuthContext";
 import {
     ACTIONS,
     MODULES,
     WORK_ORDER_STATUS,
-} from "../../security/constants";
-
+    } from "../../security/constants";
 import {
     approveWorkOrder,
     rejectWorkOrder,
     submitWorkOrder,
-} from "../../workflows/workOrderWorkflow";
+    } from "../../workflows/workOrderWorkflow";
 
 const initialWorkOrders = [
     {
@@ -43,18 +44,55 @@ function WorkOrders() {
     const [workOrders, setWorkOrders] =
         useState(initialWorkOrders);
 
+    const [selectedWorkOrderId, setSelectedWorkOrderId] =
+        useState(null);
+
+    const selectedWorkOrder =
+        workOrders.find(
+            (workOrder) => workOrder.id === selectedWorkOrderId
+        ) ?? null;
     const [showForm, setShowForm] = useState(true);
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] =
         useState("All");
 
     function handleCreateWorkOrder(newWorkOrder) {
-        const preparedWorkOrder = {
+        const timestamp = new Date().toISOString();
+
+        const baseWorkOrder = {
             ...newWorkOrder,
+            entityType: "Work Order",
             createdBy: user.id,
             createdByName: user.name,
+            createdAt: timestamp,
+            updatedAt: timestamp,
             version: 1,
-            approvalHistory: [],
+        };
+
+        const creationEvent = createAuditEvent({
+            action: ACTIONS.CREATE,
+            entityType: "Work Order",
+            entityId: baseWorkOrder.id,
+            entityVersion: baseWorkOrder.version,
+            fromStatus: null,
+            toStatus: WORK_ORDER_STATUS.DRAFT,
+            user,
+            timestamp,
+            changes: Object.entries(newWorkOrder).map(
+                ([field, value]) => ({
+                    field,
+                    oldValue: null,
+                    newValue: value,
+                })
+            ),
+        });
+
+        const preparedWorkOrder = {
+            ...baseWorkOrder,
+            auditTrail: [creationEvent],
+
+            // Temporary Supplier-workflow compatibility.
+            approvalHistory: [creationEvent],
         };
 
         setWorkOrders((current) => [
@@ -142,6 +180,13 @@ function WorkOrders() {
         }
     }
 
+    function handleViewWorkOrder(workOrderId) {
+        setSelectedWorkOrderId(workOrderId);
+    }
+
+    function handleCloseDetails() {
+        setSelectedWorkOrderId(null);
+    }
 
 
     const filteredWorkOrders = workOrders.filter(
@@ -246,9 +291,15 @@ function WorkOrders() {
                 <WorkOrderTable
                     workOrders={filteredWorkOrders}
                     currentUser={user}
+                    onViewWorkOrder={handleViewWorkOrder}
                     onSubmitWorkOrder={handleSubmitWorkOrder}
                     onApproveWorkOrder={handleApproveWorkOrder}
                     onRejectWorkOrder={handleRejectWorkOrder}
+                />
+
+                <WorkOrderDetailsPanel
+                    workOrder={selectedWorkOrder}
+                    onClose={handleCloseDetails}
                 />
 
                 <div className="table-footer">
@@ -271,5 +322,4 @@ function WorkOrders() {
         </div>
     );
 }
-
 export default WorkOrders;  

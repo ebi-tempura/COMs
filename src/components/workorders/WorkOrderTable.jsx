@@ -35,6 +35,7 @@ function canCurrentUserApprove(workOrder, currentUser) {
 function WorkOrderTable({
     workOrders,
     currentUser,
+    onViewWorkOrder,
     onSubmitWorkOrder,
     onApproveWorkOrder,
     onRejectWorkOrder,
@@ -100,7 +101,16 @@ function WorkOrderTable({
                                         module={MODULES.WORK_ORDERS}
                                         action={ACTIONS.VIEW}
                                     >
-                                        <button type="button">View</button>
+                                        <button type="button"
+
+
+                                            onClick={() => onViewWorkOrder(workOrder.id)}
+                                        >
+                                            View
+                                        </button>
+
+
+
                                     </Can>
 
                                     {workOrder.status ===
