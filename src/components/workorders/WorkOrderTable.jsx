@@ -10,15 +10,40 @@ function getStatusClass(status) {
     return status.toLowerCase().replaceAll(" ", "-");
 }
 
+function canCurrentUserApprove(workOrder, currentUser) {
+    const currentStep =
+        workOrder.approvalRoute?.[workOrder.currentApprovalStep];
+
+    if (
+        !currentStep ||
+        !currentUser ||
+        workOrder.status === WORK_ORDER_STATUS.REJECTED ||
+        workOrder.status === WORK_ORDER_STATUS.APPROVED
+    ) {
+        return false;
+    }
+
+    const isRequiredApprover =
+        currentStep.role === currentUser.role;
+
+    const isWorkOrderCreator =
+        workOrder.createdBy === currentUser.id;
+
+    return isRequiredApprover && !isWorkOrderCreator;
+}
+
 function WorkOrderTable({
     workOrders,
+    currentUser,
     onSubmitWorkOrder,
+    onApproveWorkOrder,
+    onRejectWorkOrder,
     onEditWorkOrder,
     onInactiveWorkOrder,
 }) {
     return (
         <div className="table-wrapper">
-            <table className="data-table">
+             <table className="data-table">
                 <thead>
                     <tr>
                         <th>ID</th>
@@ -94,7 +119,37 @@ function WorkOrderTable({
                                                 </button>
                                             </Can>
                                         )}
+                                    {canCurrentUserApprove(workOrder, currentUser) && (
+                                        <>
+                                            <Can
+                                                module={MODULES.WORK_ORDERS}
+                                                action={ACTIONS.APPROVE}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        onApproveWorkOrder(workOrder.id)
+                                                    }
+                                                >
+                                                    Approve
+                                                </button>
+                                            </Can>
 
+                                            <Can
+                                                module={MODULES.WORK_ORDERS}
+                                                action={ACTIONS.REJECT}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        onRejectWorkOrder(workOrder.id)
+                                                    }
+                                                >
+                                                    Reject
+                                                </button>
+                                            </Can>
+                                        </>
+                                    )}
                                     {onEditWorkOrder &&
                                         workOrder.status ===
                                         WORK_ORDER_STATUS.DRAFT && (

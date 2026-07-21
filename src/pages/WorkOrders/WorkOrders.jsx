@@ -13,7 +13,11 @@ import {
     WORK_ORDER_STATUS,
 } from "../../security/constants";
 
-import { submitWorkOrder } from "../../workflows/workOrderWorkflow";
+import {
+    approveWorkOrder,
+    rejectWorkOrder,
+    submitWorkOrder,
+} from "../../workflows/workOrderWorkflow";
 
 const initialWorkOrders = [
     {
@@ -74,6 +78,71 @@ function WorkOrders() {
             alert(error.message);
         }
     }
+
+    function handleApproveWorkOrder(workOrderId) {
+        try {
+            const workOrder = workOrders.find(
+                (item) => item.id === workOrderId
+            );
+
+            if (!workOrder) {
+                throw new Error("Work Order not found.");
+            }
+
+            const updatedWorkOrder = approveWorkOrder(
+                workOrder,
+                user
+            );
+
+            setWorkOrders((current) =>
+                current.map((item) =>
+                    item.id === workOrderId
+                        ? updatedWorkOrder
+                        : item
+                )
+            );
+        } catch (error) {
+            alert(error.message);
+        }
+    }
+
+    function handleRejectWorkOrder(workOrderId) {
+        const comment = window.prompt(
+            "Enter the reason for rejection:"
+        );
+
+        if (comment === null) {
+            return;
+        }
+
+        try {
+            const workOrder = workOrders.find(
+                (item) => item.id === workOrderId
+            );
+
+            if (!workOrder) {
+                throw new Error("Work Order not found.");
+            }
+
+            const updatedWorkOrder = rejectWorkOrder(
+                workOrder,
+                user,
+                comment
+            );
+
+            setWorkOrders((current) =>
+                current.map((item) =>
+                    item.id === workOrderId
+                        ? updatedWorkOrder
+                        : item
+                )
+            );
+        } catch (error) {
+            alert(error.message);
+        }
+    }
+
+
 
     const filteredWorkOrders = workOrders.filter(
         (workOrder) => {
@@ -176,9 +245,10 @@ function WorkOrders() {
 
                 <WorkOrderTable
                     workOrders={filteredWorkOrders}
-                    onSubmitWorkOrder={
-                        handleSubmitWorkOrder
-                    }
+                    currentUser={user}
+                    onSubmitWorkOrder={handleSubmitWorkOrder}
+                    onApproveWorkOrder={handleApproveWorkOrder}
+                    onRejectWorkOrder={handleRejectWorkOrder}
                 />
 
                 <div className="table-footer">

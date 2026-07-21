@@ -4,8 +4,7 @@ import {
     WORK_ORDER_STATUS,
 } from "../security/constants";
 
-import { updateRecordStatus } from "./workflowEngine";
-
+import { isCreator, updateRecordStatus } from "./workflowEngine";
 
 export const WORK_ORDER_APPROVER_ROLES = Object.freeze({
     PRESIDENT: ROLES.PRESIDENT,
@@ -159,8 +158,99 @@ export function submitWorkOrder(workOrder, user) {
     });
 }
 
+const STATUS_BY_APPROVER_ROLE = Object.freeze({
+    [WORK_ORDER_APPROVER_ROLES.PRESIDENT]:
+        WORK_ORDER_STATUS.PENDING_PRESIDENT_APPROVAL,
+    [WORK_ORDER_APPROVER_ROLES.TREASURER]:
+        WORK_ORDER_STATUS.PENDING_TREASURER_APPROVAL,
+    [WORK_ORDER_APPROVER_ROLES.BOARD_MEMBER]:
+        WORK_ORDER_STATUS.PENDING_BOARD_MEMBER_APPROVAL,
+});
+
+function getCurrentApprovalStep(workOrder) {
+    if (!Array.isArray(workOrder.approvalRoute)) {
+        throw new Error(
+            "The Work Order does not have a locked approval route."
+        );
+    }
+
+    const currentStep =
+        workOrder.approvalRoute[workOrder.currentApprovalStep];
+
+    if (!currentStep) {
+        throw new Error(
+            "The Work Order does not have a current approval step."
+        );
+    }
+
+    return currentStep;
+}
+
+function validateWorkOrderApprover(workOrder, user) {
+    if (isCreator(workOrder, user)) {
+        throw new Error(
+            "You cannot approve or reject your own Work Order."
+        );
+    }
+
+    const currentStep = getCurrentApprovalStep(workOrder);
+    const expectedStatus = STATUS_BY_APPROVER_ROLE[currentStep.role];
+
+    if (workOrder.status !== expectedStatus) {
+        throw new Error(
+            "This Work Order is not awaiting the current approval step."
+        );
+    }
+
+    if (user.role !== currentStep.role) {
+        throw new Error(
+            `Only the ${ROLE_LABELS[currentStep.role]} can act on this step.`
+        );
+    }
+}
+
+export function approveWorkOrder(workOrder, user) {
+    validateWorkOrderApprover(workOrder, user);
+
+    const nextStepIndex = workOrder.currentApprovalStep + 1;
+    const nextStep = workOrder.approvalRoute[nextStepIndex];
+
+    return updateRecordStatus({
+        record: {
+            ...workOrder,
+            currentApprovalStep: nextStep ? nextStepIndex : null,
+        },
+        nextStatus: nextStep
+            ? STATUS_BY_APPROVER_ROLE[nextStep.role]
+            : WORK_ORDER_STATUS.APPROVED,
+        action: ACTIONS.APPROVE,
+        user,
+    });
+}
+
+export function rejectWorkOrder(workOrder, user, comment) {
+    if (!comment?.trim()) {
+        throw new Error("Rejection requires a comment.");
+    }
+
+    validateWorkOrderApprover(workOrder, user);
+
+    return updateRecordStatus({
+        record: {
+            ...workOrder,
+            currentApprovalStep: null,
+        },
+        nextStatus: WORK_ORDER_STATUS.REJECTED,
+        action: ACTIONS.REJECT,
+        user,
+        comment: comment.trim(),
+    });
+}
+
 const workOrderWorkflow = Object.freeze({
     submit: submitWorkOrder,
+    approve: approveWorkOrder,
+    reject: rejectWorkOrder,
     getApprovalRoute: getWorkOrderApprovalRoute,
     calculateApproval: calculateWorkOrderApproval,
     lockApprovalRoute: lockWorkOrderApprovalRoute,
