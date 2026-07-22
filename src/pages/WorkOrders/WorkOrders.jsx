@@ -23,7 +23,7 @@ import {
 const initialWorkOrders = [
     {
         id: "WO-2025-0012",
-        title: "Fix lobby light",
+        Title: "Fix lobby light",
         category: "Electrical",
         supplier: "Electro Services SA",
         requestedBy: "Admin User",
@@ -228,13 +228,15 @@ function WorkOrders() {
                             <h2>Create New Work Order</h2>
                         </div>
 
-                        <WorkOrderForm
-                            onCreateWorkOrder={
-                                handleCreateWorkOrder
-                            }
-                            onCancel={() => setShowForm(false)}
-                        />
-                    </Card>
+                            <WorkOrderForm
+                                onCreateWorkOrder={
+                                    handleCreateWorkOrder
+                                }
+                                workOrders={workOrders}
+
+                                onCancel={() => setShowForm(false)}
+                            />
+                        </Card>
                 )}
             </Can>
 
@@ -297,11 +299,6 @@ function WorkOrders() {
                     onRejectWorkOrder={handleRejectWorkOrder}
                 />
 
-                <WorkOrderDetailsPanel
-                    workOrder={selectedWorkOrder}
-                    onClose={handleCloseDetails}
-                />
-
                 <div className="table-footer">
                     <p>
                         Showing 1 to{" "}
@@ -319,6 +316,15 @@ function WorkOrders() {
                     </div>
                 </div>
             </Card>
+
+            <Card>
+            <h2>Work order details</h2>
+                <WorkOrderDetailsPanel
+                    workOrder={selectedWorkOrder}
+                    onClose={handleCloseDetails}
+                />
+            </Card>
+
         </div>
     );
 }

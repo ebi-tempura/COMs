@@ -12,7 +12,7 @@ const initialForm = {
   description: "",
 };
 
-function WorkOrderForm({ onCreateWorkOrder, onCancel }) {
+function WorkOrderForm({ onCreateWorkOrder,workOrders}) {
   const [formData, setFormData] = useState(initialForm);
 
   function handleChange(event) {
@@ -30,7 +30,7 @@ function WorkOrderForm({ onCreateWorkOrder, onCancel }) {
     const currentYear = new Date().getFullYear();
 
     const newWorkOrder = {
-      id: `WO-${currentYear}-${String(Date.now()).slice(-4)}`,
+      id: `WO-${new Date().getFullYear()}-${String(workOrders.length + 1).padStart(4, "0")}`,
       title: formData.title,
       category: formData.category,
       supplier: formData.supplier,
@@ -185,9 +185,11 @@ function WorkOrderForm({ onCreateWorkOrder, onCancel }) {
           Create Work Order
         </Button>
 
+      {/*/
         <button type="button" className="secondary-button" onClick={onCancel}>
           Cancel
-        </button>
+        </button>*/}
+
       </div>
     </form>
   );

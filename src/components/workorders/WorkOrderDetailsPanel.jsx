@@ -14,17 +14,19 @@ function WorkOrderDetailsPanel({ workOrder, onClose }) {
                 aria-labelledby="work-order-details-title"
             >
                 <div className="details-panel-header">
+                <button type="button" onClick={onClose}>
+                        Close
+                    </button>
+
                     <div>
                         <h2 id="work-order-details-title">
                             {workOrder.id}
                         </h2>
 
-                        <p>{workOrder.title}</p>
+                        <p> <strong>Work Order title: </strong> {workOrder.title}</p>
                     </div>
 
-                    <button type="button" onClick={onClose}>
-                        Close
-                    </button>
+
                 </div>
 
                 <div className="work-order-details">

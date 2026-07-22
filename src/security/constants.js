@@ -47,12 +47,27 @@ export const ROLES = Object.freeze({
   export const WORK_ORDER_STATUS = Object.freeze({
     DRAFT: "Draft",
     SUBMITTED: "Submitted",
-    PENDING_PRESIDENT_APPROVAL: "Pending President Approval",
-    PENDING_TREASURER_APPROVAL: "Pending Treasurer Approval",
-    PENDING_BOARD_MEMBER_APPROVAL: "Pending Board Member Approval",
+
+    PENDING_PRESIDENT_APPROVAL:
+        "Pending President Approval",
+    PENDING_TREASURER_APPROVAL:
+        "Pending Treasurer Approval",
+    PENDING_BOARD_MEMBER_APPROVAL:
+        "Pending Board Member Approval",
+
     APPROVED: "Approved",
     IN_PROGRESS: "In Progress",
+
+    PENDING_COMPLETION_PRESIDENT_APPROVAL:
+        "Pending Completion President Approval",
+    PENDING_COMPLETION_TREASURER_APPROVAL:
+        "Pending Completion Treasurer Approval",
+    PENDING_COMPLETION_BOARD_MEMBER_APPROVAL:
+        "Pending Completion Board Member Approval",
+
+    COMPLETION_REJECTED: "Completion Rejected",
     COMPLETED: "Completed",
+
     REJECTED: "Rejected",
     CANCELLED: "Cancelled",
     INACTIVE: "Inactive",
