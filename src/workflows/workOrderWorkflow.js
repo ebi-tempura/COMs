@@ -263,14 +263,320 @@ export function rejectWorkOrder(workOrder, user, comment) {
     });
 }
 
+
+function validateWorkOrderOperator(user) {
+    if (
+        !user?.id ||
+        !WORK_ORDER_OPERATOR_ROLES.includes(user.role)
+    ) {
+        throw new Error(
+            "Only Staff or Manager can start work or submit completion."
+        );
+    }
+}
+
+export function startWorkOrder(workOrder, user) {
+    validateWorkOrderOperator(user);
+
+    if (workOrder.status !== WORK_ORDER_STATUS.APPROVED) {
+        throw new Error(
+            "Only an approved Work Order can be started."
+        );
+    }
+
+    return updateRecordStatus({
+        record: workOrder,
+        nextStatus: WORK_ORDER_STATUS.IN_PROGRESS,
+        action: ACTIONS.START_WORK,
+        user,
+    });
+}
+
+export function calculateWorkOrderCompletionApproval(
+    workOrder
+) {
+    const originallyApprovedAmount =
+        normalizeWorkOrderAmount(
+            workOrder.approvalAmount ??
+                workOrder.amount
+        );
+
+    /*
+     * Later, the completion form can provide actualAmount.
+     * Until then, it falls back to the original amount.
+     */
+    const reportedCompletionAmount =
+        normalizeWorkOrderAmount(
+            workOrder.actualAmount ??
+                workOrder.finalAmount ??
+                workOrder.amount
+        );
+
+    /*
+     * The completion route cannot become weaker.
+     *
+     * Example:
+     * Original amount: 4,000
+     * Final amount: 900
+     * Completion approval still uses 4,000.
+     */
+    const completionApprovalAmount = Math.max(
+        originallyApprovedAmount,
+        reportedCompletionAmount
+    );
+
+    return {
+        reportedCompletionAmount,
+        completionApprovalAmount,
+        completionApprovalCurrency: "MXN",
+        completionApprovalRoute:
+            getWorkOrderApprovalRoute(
+                completionApprovalAmount
+            ),
+    };
+}
+
+export function lockWorkOrderCompletionApprovalRoute(
+    workOrder
+) {
+    const completionApproval =
+        calculateWorkOrderCompletionApproval(
+            workOrder
+        );
+
+    const completionVersion =
+        (Number.isInteger(
+            workOrder.completionVersion
+        )
+            ? workOrder.completionVersion
+            : 0) + 1;
+
+    return {
+        ...workOrder,
+        ...completionApproval,
+
+        completionVersion,
+
+        completionApprovalRouteLabel:
+            formatWorkOrderApprovalRoute(
+                completionApproval
+                    .completionApprovalRoute
+            ),
+
+        completionApprovalRouteCalculatedAt:
+            new Date().toISOString(),
+
+        completionApprovalRouteLocked: true,
+        currentCompletionApprovalStep: 0,
+    };
+}
+
+export function submitWorkOrderCompletion(
+    workOrder,
+    user
+) {
+    validateWorkOrderOperator(user);
+
+    const canSubmitCompletion = [
+        WORK_ORDER_STATUS.IN_PROGRESS,
+        WORK_ORDER_STATUS.COMPLETION_REJECTED,
+    ].includes(workOrder.status);
+
+    if (!canSubmitCompletion) {
+        throw new Error(
+            "Only an in-progress or completion-rejected Work Order can be submitted for completion approval."
+        );
+    }
+
+    const lockedWorkOrder =
+        lockWorkOrderCompletionApprovalRoute(
+            workOrder
+        );
+
+    return updateRecordStatus({
+        record: {
+            ...lockedWorkOrder,
+
+            completionSubmittedBy: {
+                userId: user.id,
+                userName: user.name,
+                role: user.role,
+            },
+        },
+
+        nextStatus:
+            WORK_ORDER_STATUS
+                .PENDING_COMPLETION_PRESIDENT_APPROVAL,
+
+        action: ACTIONS.COMPLETE_WORK,
+        user,
+    });
+}
+
+function getCurrentCompletionApprovalStep(
+    workOrder
+) {
+    if (
+        !Array.isArray(
+            workOrder.completionApprovalRoute
+        )
+    ) {
+        throw new Error(
+            "The Work Order does not have a locked completion approval route."
+        );
+    }
+
+    const currentStep =
+        workOrder.completionApprovalRoute[
+            workOrder
+                .currentCompletionApprovalStep
+        ];
+
+    if (!currentStep) {
+        throw new Error(
+            "The Work Order does not have a current completion approval step."
+        );
+    }
+
+    return currentStep;
+}
+
+function validateWorkOrderCompletionApprover(
+    workOrder,
+    user
+) {
+    if (isCreator(workOrder, user)) {
+        throw new Error(
+            "You cannot approve or reject completion of your own Work Order."
+        );
+    }
+
+    const currentStep =
+        getCurrentCompletionApprovalStep(
+            workOrder
+        );
+
+    const expectedStatus =
+        COMPLETION_STATUS_BY_APPROVER_ROLE[
+            currentStep.role
+        ];
+
+    if (workOrder.status !== expectedStatus) {
+        throw new Error(
+            "This Work Order is not awaiting the current completion approval step."
+        );
+    }
+
+    if (user.role !== currentStep.role) {
+        throw new Error(
+            `Only the ${currentStep.role} can act on this completion step.`
+        );
+    }
+}
+
+export function approveWorkOrderCompletion(
+    workOrder,
+    user
+) {
+    validateWorkOrderCompletionApprover(
+        workOrder,
+        user
+    );
+
+    const nextStepIndex =
+        workOrder.currentCompletionApprovalStep +
+        1;
+
+    const nextStep =
+        workOrder.completionApprovalRoute[
+            nextStepIndex
+        ];
+
+    return updateRecordStatus({
+        record: {
+            ...workOrder,
+
+            currentCompletionApprovalStep:
+                nextStep
+                    ? nextStepIndex
+                    : null,
+        },
+
+        nextStatus: nextStep
+            ? COMPLETION_STATUS_BY_APPROVER_ROLE[
+                  nextStep.role
+              ]
+            : WORK_ORDER_STATUS.COMPLETED,
+
+        action: ACTIONS.APPROVE,
+        user,
+    });
+}
+
+export function rejectWorkOrderCompletion(
+    workOrder,
+    user,
+    comment
+) {
+    if (!comment?.trim()) {
+        throw new Error(
+            "Completion rejection requires a comment."
+        );
+    }
+
+    validateWorkOrderCompletionApprover(
+        workOrder,
+        user
+    );
+
+    return updateRecordStatus({
+        record: {
+            ...workOrder,
+
+            currentCompletionApprovalStep: null,
+            completionApprovalRouteLocked: false,
+        },
+
+        nextStatus:
+            WORK_ORDER_STATUS
+                .COMPLETION_REJECTED,
+
+        action: ACTIONS.REJECT,
+        user,
+        comment: comment.trim(),
+    });
+}
+
 const workOrderWorkflow = Object.freeze({
     submit: submitWorkOrder,
     approve: approveWorkOrder,
     reject: rejectWorkOrder,
-    getApprovalRoute: getWorkOrderApprovalRoute,
-    calculateApproval: calculateWorkOrderApproval,
-    lockApprovalRoute: lockWorkOrderApprovalRoute,
-    formatApprovalRoute: formatWorkOrderApprovalRoute,
+
+    startWork: startWorkOrder,
+    submitCompletion:
+        submitWorkOrderCompletion,
+    approveCompletion:
+        approveWorkOrderCompletion,
+    rejectCompletion:
+        rejectWorkOrderCompletion,
+
+    getApprovalRoute:
+        getWorkOrderApprovalRoute,
+
+    calculateApproval:
+        calculateWorkOrderApproval,
+
+    lockApprovalRoute:
+        lockWorkOrderApprovalRoute,
+
+    calculateCompletionApproval:
+        calculateWorkOrderCompletionApproval,
+
+    lockCompletionApprovalRoute:
+        lockWorkOrderCompletionApprovalRoute,
+
+    formatApprovalRoute:
+        formatWorkOrderApprovalRoute,
 });
 
 export default workOrderWorkflow;

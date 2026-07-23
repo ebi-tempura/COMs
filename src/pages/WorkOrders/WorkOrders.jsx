@@ -18,6 +18,10 @@ import {
     approveWorkOrder,
     rejectWorkOrder,
     submitWorkOrder,
+    startWorkOrder,
+    submitWorkOrderCompletion,
+    approveWorkOrderCompletion,
+    rejectWorkOrderCompletion,
     } from "../../workflows/workOrderWorkflow";
 
 const initialWorkOrders = [
@@ -101,6 +105,26 @@ function WorkOrders() {
         ]);
     }
 
+    function updateWorkOrder(workOrderId, updateFunction) {
+        const workOrder = workOrders.find(
+            (item) => item.id === workOrderId
+        );
+    
+        if (!workOrder) {
+            throw new Error("Work Order not found.");
+        }
+    
+        const updatedWorkOrder = updateFunction(workOrder);
+    
+        setWorkOrders((current) =>
+            current.map((item) =>
+                item.id === workOrderId
+                    ? updatedWorkOrder
+                    : item
+            )
+        );
+    }
+
     function handleSubmitWorkOrder(workOrderId) {
         try {
             setWorkOrders((current) =>
@@ -173,6 +197,58 @@ function WorkOrders() {
                     item.id === workOrderId
                         ? updatedWorkOrder
                         : item
+                )
+            );
+        } catch (error) {
+            alert(error.message);
+        }
+    }
+
+    function handleStartWork(workOrderId) {
+        try {
+            updateWorkOrder(workOrderId, (workOrder) =>
+                startWorkOrder(workOrder, user)
+            );
+        } catch (error) {
+            alert(error.message);
+        }
+    }
+    
+    function handleSubmitCompletion(workOrderId) {
+        try {
+            updateWorkOrder(workOrderId, (workOrder) =>
+                submitWorkOrderCompletion(workOrder, user)
+            );
+        } catch (error) {
+            alert(error.message);
+        }
+    }
+    
+    function handleApproveCompletion(workOrderId) {
+        try {
+            updateWorkOrder(workOrderId, (workOrder) =>
+                approveWorkOrderCompletion(workOrder, user)
+            );
+        } catch (error) {
+            alert(error.message);
+        }
+    }
+    
+    function handleRejectCompletion(workOrderId) {
+        const comment = window.prompt(
+            "Enter the reason for rejecting completion:"
+        );
+    
+        if (comment === null) {
+            return;
+        }
+    
+        try {
+            updateWorkOrder(workOrderId, (workOrder) =>
+                rejectWorkOrderCompletion(
+                    workOrder,
+                    user,
+                    comment
                 )
             );
         } catch (error) {
@@ -297,6 +373,10 @@ function WorkOrders() {
                     onSubmitWorkOrder={handleSubmitWorkOrder}
                     onApproveWorkOrder={handleApproveWorkOrder}
                     onRejectWorkOrder={handleRejectWorkOrder}
+                    onStartWork={handleStartWork}
+                    onSubmitCompletion={handleSubmitCompletion}
+                    onApproveCompletion={handleApproveCompletion}
+                    onRejectCompletion={handleRejectCompletion}
                 />
 
                 <div className="table-footer">
