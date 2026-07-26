@@ -1,318 +1,244 @@
 import Can from "../security/Can";
-
 import {
-    ACTIONS,
-    MODULES,
-    WORK_ORDER_STATUS,
+  ACTIONS,
+  MODULES,
+  ROLES,
+  WORK_ORDER_STATUS,
 } from "../../security/constants";
+import { useLanguage } from "../../i18n/LanguageContext";
 
 function getStatusClass(status) {
-    return status.toLowerCase().replaceAll(" ", "-");
+  return status.toLowerCase().replaceAll(" ", "-");
 }
 
 function canCurrentUserApprove(workOrder, currentUser) {
-    const currentStep =
-        workOrder.approvalRoute?.[workOrder.currentApprovalStep];
+  const currentStep = workOrder.approvalRoute?.[workOrder.currentApprovalStep];
 
-    if (
-        !currentStep ||
-        !currentUser ||
-        workOrder.status === WORK_ORDER_STATUS.REJECTED ||
-        workOrder.status === WORK_ORDER_STATUS.APPROVED
-    ) {
-        return false;
-    }
+  if (
+    !currentStep ||
+    !currentUser ||
+    workOrder.status === WORK_ORDER_STATUS.REJECTED ||
+    workOrder.status === WORK_ORDER_STATUS.APPROVED
+  ) {
+    return false;
+  }
 
-    const isRequiredApprover =
-        currentStep.role === currentUser.role;
+  const isRequiredApprover = currentStep.role === currentUser.role;
+  const isWorkOrderCreator = workOrder.createdBy === currentUser.id;
 
-    const isWorkOrderCreator =
-        workOrder.createdBy === currentUser.id;
-
-    return isRequiredApprover && !isWorkOrderCreator;
+  return isRequiredApprover && !isWorkOrderCreator;
 }
 
 function canCurrentUserOperateWorkOrder(currentUser) {
-    return (
-        currentUser?.role === "Staff" ||
-        currentUser?.role === "Manager"
-    );
+  return [ROLES.STAFF, ROLES.MANAGER].includes(currentUser?.role);
 }
 
-function canCurrentUserApproveCompletion(
-    workOrder,
-    currentUser
-) {
-    const currentStep =
-        workOrder.completionApprovalRoute?.[
-            workOrder.currentCompletionApprovalStep
-        ];
+function canCurrentUserApproveCompletion(workOrder, currentUser) {
+  const currentStep =
+    workOrder.completionApprovalRoute?.[
+      workOrder.currentCompletionApprovalStep
+    ];
 
-    if (!currentStep || !currentUser) {
-        return false;
-    }
+  if (!currentStep || !currentUser) {
+    return false;
+  }
 
-    const isRequiredApprover =
-        currentStep.role === currentUser.role;
+  const isRequiredApprover = currentStep.role === currentUser.role;
+  const isCompletionSubmitter =
+    workOrder.completionSubmittedBy?.userId === currentUser.id;
 
-    const isCompletionSubmitter =
-        workOrder.completionSubmittedBy?.userId ===
-        currentUser.id;
-
-    return isRequiredApprover && !isCompletionSubmitter;
+  return isRequiredApprover && !isCompletionSubmitter;
 }
-
-
-
 
 function WorkOrderTable({
-    workOrders,
-    currentUser,
-    onViewWorkOrder,
-    onSubmitWorkOrder,
-    onApproveWorkOrder,
-    onRejectWorkOrder,
-
-    onStartWork,
-    onSubmitCompletion,
-    onApproveCompletion,
-    onRejectCompletion,
-
-    onEditWorkOrder,
-    onInactiveWorkOrder,
+  workOrders,
+  currentUser,
+  onViewWorkOrder,
+  onSubmitWorkOrder,
+  onApproveWorkOrder,
+  onRejectWorkOrder,
+  onStartWork,
+  onSubmitCompletion,
+  onApproveCompletion,
+  onRejectCompletion,
+  onEditWorkOrder,
+  onInactiveWorkOrder,
 }) {
-    return (
-        <div className="table-wrapper">
-             <table className="data-table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Title</th>
-                        <th>Category</th>
-                        <th>Supplier</th>
-                        <th>Requested By</th>
-                        <th>Amount (MXN)</th>
-                        <th>Status</th>
-                        {/*<th>Approval Route</th>*/}
-                        <th>Priority</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
+  const { formatCurrency, statusLabel, t, userName, valueLabel } = useLanguage();
 
-                <tbody>
-                    {workOrders.map((workOrder) => (
-                        <tr key={workOrder.id}>
-                            <td>{workOrder.id}</td>
-                            <td>{workOrder.title}</td>
-                            <td>{workOrder.category}</td>
-                            <td>{workOrder.supplier}</td>
-                            <td>{workOrder.requestedBy}</td>
+  return (
+    <div className="table-wrapper">
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>{t("workOrderTable.id")}</th>
+            <th>{t("workOrderTable.title")}</th>
+            <th>{t("workOrderTable.category")}</th>
+            <th>{t("workOrderTable.supplier")}</th>
+            <th>{t("workOrderTable.requestedBy")}</th>
+            <th>{t("workOrderTable.amount")}</th>
+            <th>{t("workOrderTable.status")}</th>
+            <th>{t("workOrderTable.priority")}</th>
+            <th>{t("workOrderTable.actions")}</th>
+          </tr>
+        </thead>
 
-                            <td>
-                                ${Number(workOrder.amount).toLocaleString()}
-                            </td>
+        <tbody>
+          {workOrders.map((workOrder) => (
+            <tr key={workOrder.id}>
+              <td>{workOrder.id}</td>
+              <td>{workOrder.title}</td>
+              <td>{valueLabel("category", workOrder.category)}</td>
+              <td>{workOrder.supplier}</td>
+              <td>{userName(workOrder.requestedBy)}</td>
+              <td>{formatCurrency(workOrder.amount)}</td>
+              <td>
+                <span
+                  className={`status-badge status-${getStatusClass(
+                    workOrder.status
+                  )}`}
+                >
+                  {statusLabel(workOrder.status)}
+                </span>
+              </td>
+              <td>
+                <span
+                  className={`priority-dot priority-${workOrder.priority.toLowerCase()}`}
+                />
+                {valueLabel("priority", workOrder.priority)}
+              </td>
+              <td>
+                <div className="icon-actions">
+                  <Can module={MODULES.WORK_ORDERS} action={ACTIONS.VIEW}>
+                    <button
+                      type="button"
+                      onClick={() => onViewWorkOrder(workOrder.id)}
+                    >
+                      {t("workOrderTable.view")}
+                    </button>
+                  </Can>
 
-                            <td>
-                                <span
-                                    className={`status-badge status-${getStatusClass(
-                                        workOrder.status
-                                    )}`}
-                                >
-                                    {workOrder.status}
-                                </span>
-                            </td>
+                  {workOrder.status === WORK_ORDER_STATUS.DRAFT && (
+                    <Can module={MODULES.WORK_ORDERS} action={ACTIONS.SUBMIT}>
+                      <button
+                        type="button"
+                        onClick={() => onSubmitWorkOrder(workOrder.id)}
+                      >
+                        {t("workOrderTable.submit")}
+                      </button>
+                    </Can>
+                  )}
 
-                         { /*  <td>
-                                {workOrder.approvalRouteLabel ||
-                                    "Calculated on submission"}
-                            </td>*/}
+                  {canCurrentUserApprove(workOrder, currentUser) && (
+                    <>
+                      <Can module={MODULES.WORK_ORDERS} action={ACTIONS.APPROVE}>
+                        <button
+                          type="button"
+                          onClick={() => onApproveWorkOrder(workOrder.id)}
+                        >
+                          {t("workOrderTable.approve")}
+                        </button>
+                      </Can>
 
-                            <td>
-                                <span
-                                    className={`priority-dot priority-${workOrder.priority.toLowerCase()}`}
-                                />
-                                {workOrder.priority}
-                            </td>
+                      <Can module={MODULES.WORK_ORDERS} action={ACTIONS.REJECT}>
+                        <button
+                          type="button"
+                          onClick={() => onRejectWorkOrder(workOrder.id)}
+                        >
+                          {t("workOrderTable.reject")}
+                        </button>
+                      </Can>
+                    </>
+                  )}
 
-                            <td>
-                                <div className="icon-actions">
-                                    <Can
-                                        module={MODULES.WORK_ORDERS}
-                                        action={ACTIONS.VIEW}
-                                    >
-                                        <button type="button"
+                  {onEditWorkOrder &&
+                    workOrder.status === WORK_ORDER_STATUS.DRAFT && (
+                      <Can module={MODULES.WORK_ORDERS} action={ACTIONS.EDIT}>
+                        <button
+                          type="button"
+                          onClick={() => onEditWorkOrder(workOrder)}
+                        >
+                          {t("workOrderTable.edit")}
+                        </button>
+                      </Can>
+                    )}
 
-                                            onClick={() => onViewWorkOrder(workOrder.id)}
-                                        >
-                                            View
-                                        </button>
+                  {onInactiveWorkOrder && (
+                    <Can
+                      module={MODULES.WORK_ORDERS}
+                      action={ACTIONS.DELETE_INACTIVE}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => onInactiveWorkOrder(workOrder.id)}
+                      >
+                        {t("workOrderTable.inactive")}
+                      </button>
+                    </Can>
+                  )}
 
-                                    </Can>
+                  {workOrder.status === WORK_ORDER_STATUS.APPROVED &&
+                    canCurrentUserOperateWorkOrder(currentUser) && (
+                      <Can
+                        module={MODULES.WORK_ORDERS}
+                        action={ACTIONS.START_WORK}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => onStartWork(workOrder.id)}
+                        >
+                          {t("workOrderTable.startWork")}
+                        </button>
+                      </Can>
+                    )}
 
-                                    {workOrder.status ===
-                                        WORK_ORDER_STATUS.DRAFT && (
-                                            <Can
-                                                module={MODULES.WORK_ORDERS}
-                                                action={ACTIONS.SUBMIT}
-                                            >
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        onSubmitWorkOrder(workOrder.id)
-                                                    }
-                                                >
-                                                    Submit
-                                                </button>
-                                            </Can>
-                                        )}
-    
-                                    {canCurrentUserApprove(workOrder, currentUser) && (
-                                        <>
-                                            <Can
-                                                module={MODULES.WORK_ORDERS}
-                                                action={ACTIONS.APPROVE}
-                                            >
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        onApproveWorkOrder(workOrder.id)
-                                                    }
-                                                >
-                                                    Approve
-                                                </button>
-                                            </Can>
+                  {[
+                    WORK_ORDER_STATUS.IN_PROGRESS,
+                    WORK_ORDER_STATUS.COMPLETION_REJECTED,
+                  ].includes(workOrder.status) &&
+                    canCurrentUserOperateWorkOrder(currentUser) && (
+                      <Can
+                        module={MODULES.WORK_ORDERS}
+                        action={ACTIONS.COMPLETE_WORK}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => onSubmitCompletion(workOrder.id)}
+                        >
+                          {t("workOrderTable.submitCompletion")}
+                        </button>
+                      </Can>
+                    )}
 
-                                            <Can
-                                                module={MODULES.WORK_ORDERS}
-                                                action={ACTIONS.REJECT}
-                                            >
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        onRejectWorkOrder(workOrder.id)
-                                                    }
-                                                >
-                                                    Reject
-                                                </button>
-                                            </Can>
-                                        </>
-                                    )}
-                                    {onEditWorkOrder &&
-                                        workOrder.status ===
-                                        WORK_ORDER_STATUS.DRAFT && (
-                                            <Can
-                                                module={MODULES.WORK_ORDERS}
-                                                action={ACTIONS.EDIT}
-                                            >
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        onEditWorkOrder(workOrder)
-                                                    }
-                                                >
-                                                    Edit
-                                                </button>
-                                            </Can>
-                                        )}
+                  {canCurrentUserApproveCompletion(workOrder, currentUser) && (
+                    <>
+                      <Can module={MODULES.WORK_ORDERS} action={ACTIONS.APPROVE}>
+                        <button
+                          type="button"
+                          onClick={() => onApproveCompletion(workOrder.id)}
+                        >
+                          {t("workOrderTable.approveCompletion")}
+                        </button>
+                      </Can>
 
-                                    {onInactiveWorkOrder && (
-                                        <Can
-                                            module={MODULES.WORK_ORDERS}
-                                            action={ACTIONS.DELETE_INACTIVE}
-                                        >
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    onInactiveWorkOrder(workOrder.id)
-                                                }
-                                            >
-                                                Inactive
-                                            </button>
-                                        </Can>
-                                    )}
-
-                                    {workOrder.status === WORK_ORDER_STATUS.APPROVED &&
-                                        canCurrentUserOperateWorkOrder(currentUser) && (
-                                            <Can
-                                                module={MODULES.WORK_ORDERS}
-                                                action={ACTIONS.START_WORK}
-                                            >
-                                            <button
-                                            type="button"
-                                            onClick={() =>
-                                            onStartWork(workOrder.id)
-                                            }
-                                            >
-                                                    Start Work
-                                                </button>
-                                            </Can>
-                                        )}
-
-                                    {[
-                                        WORK_ORDER_STATUS.IN_PROGRESS,
-                                        WORK_ORDER_STATUS.COMPLETION_REJECTED,
-                                    ].includes(workOrder.status) &&
-                                        canCurrentUserOperateWorkOrder(currentUser) && (
-                                            <Can
-                                                module={MODULES.WORK_ORDERS}
-                                                action={ACTIONS.COMPLETE_WORK}
-                                            >
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        onSubmitCompletion(workOrder.id)
-                                                    }
-                                                >
-                                                    Submit Completion
-                                                </button>
-                                            </Can>
-                                        )}
-                                    {canCurrentUserApproveCompletion(
-                                            workOrder,
-                                            currentUser
-                                        ) && (
-                                            <>
-                                                <Can
-                                                    module={MODULES.WORK_ORDERS}
-                                                    action={ACTIONS.APPROVE}
-                                                >
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            onApproveCompletion(workOrder.id)
-                                                        }
-                                                    >
-                                                        Approve Completion
-                                                    </button>
-                                                </Can>
-
-                                                <Can
-                                                    module={MODULES.WORK_ORDERS}
-                                                    action={ACTIONS.REJECT}
-                                                >
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            onRejectCompletion(workOrder.id)
-                                                        }
-                                                    >
-                                                        Reject Completion
-                                                    </button>
-                                                </Can>
-                                            </>
-                                        )}                                        
-
-
-
-
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    );
+                      <Can module={MODULES.WORK_ORDERS} action={ACTIONS.REJECT}>
+                        <button
+                          type="button"
+                          onClick={() => onRejectCompletion(workOrder.id)}
+                        >
+                          {t("workOrderTable.rejectCompletion")}
+                        </button>
+                      </Can>
+                    </>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 export default WorkOrderTable;

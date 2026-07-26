@@ -6,6 +6,37 @@
 @import "./styles/badges.css";
 @import "./styles/panels.css";
 
+.development-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 10px 20px;
+  border-bottom: 1px solid #dfe6f0;
+  background: #ffffff;
+}
+
+.role-switcher,
+.language-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.role-switcher select,
+.language-switcher select {
+  min-height: 34px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #0f172a;
+  padding: 5px 9px;
+}
+
 .work-orders-page {
   display: flex;
   flex-direction: column;
@@ -32,44 +63,32 @@
   font-size: 14px;
 }
 
-.header-actions {
+.icon-actions {
   display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   align-items: center;
-  gap: 18px;
 }
 
-.notification {
-  position: relative;
-  font-size: 20px;
-}
-
-.notification b {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  background: #ef4444;
-  color: white;
-  font-size: 10px;
-  width: 17px;
-  height: 17px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-}
-
-
-@media (max-width: 1200px) {
-  .work-order-form {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .form-wide,
-  .attachment-box {
-    grid-column: span 2;
-  }
+.icon-actions button {
+  width: auto;
+  min-width: max-content;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  padding: 6px 10px;
 }
 
 @media (max-width: 800px) {
+  .development-toolbar {
+    justify-content: stretch;
+  }
+
+  .role-switcher,
+  .language-switcher {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .app-layout {
     flex-direction: column;
   }
@@ -90,12 +109,6 @@
     align-items: stretch;
   }
 
-  .work-order-form {
-    grid-template-columns: 1fr;
-  }
-
-
-
   .table-tools {
     flex-direction: column;
     align-items: stretch;
@@ -106,20 +119,3 @@
     width: 100%;
   }
 }
-  
-.icon-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
-
-.icon-actions button {
-  width: auto;
-  min-width: max-content;
-  white-space: nowrap;
-  flex: 0 0 auto;
-  padding: 6px 10px;
-}
-
-

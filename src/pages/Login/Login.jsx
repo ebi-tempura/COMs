@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useLanguage } from "../../i18n/LanguageContext";
 
 function Login({ setUserEmail }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [email, setEmail] = useState("");
 
   function handleSubmit(event) {
     event.preventDefault();
-
     setUserEmail(email);
-
     navigate("/work-orders");
   }
 
@@ -18,12 +18,12 @@ function Login({ setUserEmail }) {
       <section className="login-card">
         <div className="login-logo">COMS</div>
 
-        <h1>Welcome back</h1>
-        <p>Sign in to manage condominium operations.</p>
+        <h1>{t("login.welcome")}</h1>
+        <p>{t("login.subtitle")}</p>
 
         <form className="login-form" onSubmit={handleSubmit}>
           <label>
-            Email
+            {t("login.email")}
             <input
               type="email"
               placeholder="admin@condominio.com"
@@ -34,21 +34,25 @@ function Login({ setUserEmail }) {
           </label>
 
           <label>
-            Password
-            <input type="password" placeholder="Enter your password" required />
+            {t("login.password")}
+            <input
+              type="password"
+              placeholder={t("login.passwordPlaceholder")}
+              required
+            />
           </label>
 
           <div className="login-options">
             <label className="checkbox-row">
               <input type="checkbox" />
-              Remember me
+              {t("login.rememberMe")}
             </label>
 
-            <a>Forgot password?</a>
+            <a>{t("login.forgotPassword")}</a>
           </div>
 
           <button className="button" type="submit">
-            Sign In
+            {t("login.signIn")}
           </button>
         </form>
       </section>
