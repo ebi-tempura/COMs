@@ -1,7 +1,9 @@
 import { useAuth } from "../../auth/AuthContext";
+import { useLanguage } from "../../i18n/LanguageContext";
 
 export default function RoleSwitcher() {
   const { user, users, setUser } = useAuth();
+  const { roleLabel, t, userName } = useLanguage();
 
   function handleChange(event) {
     const selectedUser = users.find((item) => item.id === event.target.value);
@@ -12,17 +14,15 @@ export default function RoleSwitcher() {
   }
 
   return (
-    <div style={{ marginBottom: "1rem" }}>
-      <label>
-        Testing as:{" "}
-        <select value={user.id} onChange={handleChange}>
-          {users.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name} — {item.role}
-            </option>
-          ))}
-        </select>
-      </label>
-    </div>
+    <label className="role-switcher">
+      <span>{t("roleSwitcher.testingAs")}</span>
+      <select value={user.id} onChange={handleChange}>
+        {users.map((item) => (
+          <option key={item.id} value={item.id}>
+            {userName(item)} — {roleLabel(item.role)}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
