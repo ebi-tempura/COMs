@@ -48,6 +48,13 @@ function WorkOrderDetailsPanel({ workOrder, onClose }) {
                         <strong>Priority:</strong>{" "}
                         {workOrder.priority}
                     </p>
+
+                    <p>
+                        <strong>Desciption:</strong>{" "}
+                        {workOrder.description}
+
+                    </p>
+
                 </div>
 
                 <hr />

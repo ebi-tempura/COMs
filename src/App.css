@@ -109,16 +109,17 @@
   
 .icon-actions {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
 }
 
 .icon-actions button {
-  width: 35px;
-  height: 35px;
-  border: 1px solid #d4dce8;
-  background: white;
-  border-radius: 7px;
-  cursor: pointer;
+  width: auto;
+  min-width: max-content;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  padding: 6px 10px;
 }
 
 

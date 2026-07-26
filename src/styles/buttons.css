@@ -27,6 +27,8 @@
   align-items: center;
   gap: 0.5rem;
   flex-wrap: nowrap;
+  width:fit-content;
+
 }
 
 .table-action-button {
