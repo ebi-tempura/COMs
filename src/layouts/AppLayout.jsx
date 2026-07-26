@@ -1,13 +1,16 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
+import { useLanguage } from "../i18n/LanguageContext";
 
 function AppLayout() {
-  
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { roleLabel, t, userName } = useLanguage();
 
   function handleLogout() {
-  navigate("/login");
+    navigate("/login");
   }
-  
+
   return (
     <div className="app-layout">
       <aside className="sidebar">
@@ -15,35 +18,34 @@ function AppLayout() {
           <div className="sidebar-logo">🏢</div>
           <div>
             <h2>COMS</h2>
-            <p>Condominium Operational Management System</p>
+            <p>{t("brand.tagline")}</p>
           </div>
         </div>
 
         <nav className="sidebar-nav">
-          <NavLink to="/Dashbord">Dashboard</NavLink>
-          <NavLink to="/work-orders">Work Orders</NavLink>
-          <NavLink to="/suppliers">Suppliers</NavLink>
-          <NavLink to="/residents">Residents</NavLink>
-          <NavLink to="/reports">Reports</NavLink>
-          <NavLink to="/documents">Documents</NavLink>
-          <NavLink to="/settings">Settings</NavLink>
+          <NavLink to="/Dashbord">{t("nav.dashboard")}</NavLink>
+          <NavLink to="/work-orders">{t("nav.workOrders")}</NavLink>
+          <NavLink to="/suppliers">{t("nav.suppliers")}</NavLink>
+          <NavLink to="/residents">{t("nav.residents")}</NavLink>
+          <NavLink to="/reports">{t("nav.reports")}</NavLink>
+          <NavLink to="/documents">{t("nav.documents")}</NavLink>
+          <NavLink to="/settings">{t("nav.settings")}</NavLink>
         </nav>
 
         <div className="sidebar-user">
-         <div className="user-info">
-          <div className="user-avatar">A</div>
+          <div className="user-info">
+            <div className="user-avatar">{userName(user).charAt(0)}</div>
+            <div>
+              <strong>{userName(user)}</strong>
+              <span>{roleLabel(user.role)}</span>
+            </div>
+          </div>
 
-          <div>
-            <strong>Admin User</strong>
-            <span>Administrator</span>
-          </div>
-          </div>
-
-           <button className="logout-button" onClick={handleLogout}>
-             Logout
-            </button>
-          </div>
-          </aside>
+          <button className="logout-button" onClick={handleLogout}>
+            {t("nav.logout")}
+          </button>
+        </div>
+      </aside>
 
       <main className="main-content">
         <Outlet />
