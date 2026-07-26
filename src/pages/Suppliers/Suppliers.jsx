@@ -3,60 +3,44 @@ import { suppliers as initialSuppliers } from "../../data/SuppliersData";
 import Card from "../../components/common/Card";
 import SupplierTable from "../../components/suppliers/SupplierTable";
 import SupplierForm from "../../components/suppliers/SupplierForm";
-import Can from "../../components/security/Can"
-
+import Can from "../../components/security/Can";
 import { SupplierWorkflow } from "../../workflows/supplierWorkflow";
-
-/*import {submitSupplier, 
-  applyRfcValidation,   
-  resubmitSupplier,
-  approveSupplier,
-  rejectSupplier} from "../../workflows/supplierWorkflow";
-*/
-
-import { ACTIONS, MODULES, SUPPLIER_STATUS} from "../../security/constants";
+import {
+  ACTIONS,
+  MODULES,
+  SUPPLIER_STATUS,
+} from "../../security/constants";
 import { useAuth } from "../../auth/AuthContext";
+import { useLanguage } from "../../i18n/LanguageContext";
 
-/*const STATUSES = {
-  DRAFT: "Draft",
-  PENDING: "Pending Approval",
-  ACTIVE: "Active",
-  APPROVED: "Approved",
-  IN_PROGRESS: "In Progress",
-  COMPLETED: "Completed",
-  REJECTED: "Rejected",
-};*/
+function Suppliers() {
+  const { user } = useAuth();
+  const { statusLabel, t, workflowMessage } = useLanguage();
+  const [supplierList, setSupplierList] = useState(initialSuppliers);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
 
-function Suppliers({userEmail}) {
-  console.log(userEmail);
-  
-const {user} = useAuth();
-const [supplierList, setSupplierList] = useState(initialSuppliers);
-const [search, setSearch] = useState("");
-const [statusFilter, setStatusFilter] = useState("All");
-const filteredSuppliers = supplierList.filter((supplier) => {
-  const matchesSearch =
-    supplier.name.toLowerCase().includes(search.toLowerCase());
+  const filteredSuppliers = supplierList.filter((supplier) => {
+    const matchesSearch = supplier.name
+      .toLowerCase()
+      .includes(search.toLowerCase());
+    const matchesStatus =
+      statusFilter === "All" || supplier.status === statusFilter;
 
-  const matchesStatus =
-    statusFilter === "All" || supplier.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
-  return matchesSearch && matchesStatus;
-});
-  
   function handleCreateSupplier(newSupplier) {
-    const supplierWithWorkflow = { 
-      ... newSupplier,
-
+    const timestamp = new Date().toISOString();
+    const supplierWithWorkflow = {
+      ...newSupplier,
       status: SUPPLIER_STATUS.DRAFT,
-      createdBy: user.id,    
+      createdBy: user.id,
       createdByName: user.name,
       isActive: true,
-
-      approvalHistory:[],
-      
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      approvalHistory: [],
+      createdAt: timestamp,
+      updatedAt: timestamp,
     };
 
     setSupplierList((current) => [supplierWithWorkflow, ...current]);
@@ -65,15 +49,23 @@ const filteredSuppliers = supplierList.filter((supplier) => {
   function handleEditSupplier(supplier) {
     console.log("Edit supplier:", supplier);
   }
-  
+
   function handleInactiveSupplier(supplierId) {
     setSupplierList((current) =>
       current.map((supplier) =>
         supplier.id === supplierId
-          ? { ...supplier, status: "Inactive", isActive: false }
+          ? {
+              ...supplier,
+              status: SUPPLIER_STATUS.INACTIVE,
+              isActive: false,
+            }
           : supplier
       )
     );
+  }
+
+  function showWorkflowError(error) {
+    window.alert(workflowMessage(error.message));
   }
 
   function handleApproveSupplier(supplierId) {
@@ -86,34 +78,34 @@ const filteredSuppliers = supplierList.filter((supplier) => {
         )
       );
     } catch (error) {
-      window.alert(error.message);
+      showWorkflowError(error);
     }
   }
 
   function handleRejectSupplier(supplierId) {
-  const comment = window.prompt("Enter rejection reason:");
+    const comment = window.prompt(t("suppliers.rejectionPrompt"));
 
-   if (comment === null) {
-    return;
+    if (comment === null) {
+      return;
     }
 
     if (!comment.trim()) {
-    window.alert("Rejection requires a comment.");
-    return;
+      window.alert(t("suppliers.rejectionRequired"));
+      return;
     }
 
     try {
-    setSupplierList((current) =>
-      current.map((supplier) =>
-        supplier.id === supplierId
-          ? SupplierWorkflow.reject(supplier, user, comment)
-          : supplier
-      )
-    );
+      setSupplierList((current) =>
+        current.map((supplier) =>
+          supplier.id === supplierId
+            ? SupplierWorkflow.reject(supplier, user, comment)
+            : supplier
+        )
+      );
     } catch (error) {
-    window.alert(error.message);
+      showWorkflowError(error);
     }
-    }
+  }
 
   function handleSubmitSupplier(supplierId) {
     setSupplierList((current) =>
@@ -145,71 +137,68 @@ const filteredSuppliers = supplierList.filter((supplier) => {
     );
   }
 
-    return (
-      
-      <div className="page-container">
-        <main> 
+  return (
+    <div className="page-container">
+      <main>
         <div className="page-header">
           <div>
-            <h1>Suppliers</h1>
-              <p className="page-subtitle">Manage companies and individual contractors approved for condominium work.
-              </p>
+            <h1>{t("suppliers.title")}</h1>
+            <p className="page-subtitle">{t("suppliers.subtitle")}</p>
           </div>
-        </div>  
+        </div>
 
         <Can module={MODULES.SUPPLIERS} action={ACTIONS.CREATE}>
           <Card>
-          <div className="panel-title">
-              <h2>Create a New Supplier</h2>
-          </div> 
+            <div className="panel-title">
+              <h2>{t("suppliers.createTitle")}</h2>
+            </div>
             <SupplierForm onCreateSupplier={handleCreateSupplier} />
           </Card>
         </Can>
 
+        <Card>
+          <div className="panel-title">
+            <div>
+              <h2>{t("suppliers.directory")}</h2>
+            </div>
 
-          <Card>
-            <div className="panel-title">
-              <div>
-                <h2> Supplier Directory</h2>
-              </div>
-
-              <div className="table-tools">
+            <div className="table-tools">
               <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search work orders..."
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={t("suppliers.searchPlaceholder")}
               />
               <select
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-            >
-              <option value="All">All Statuses</option>
-              {Object.values(SUPPLIER_STATUS).map((status) => (
-                <option key={status}>{status}</option>
-              ))}
-            </select>
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+              >
+                <option value="All">{t("common.allStatuses")}</option>
+                {Object.values(SUPPLIER_STATUS).map((status) => (
+                  <option key={status} value={status}>
+                    {statusLabel(status)}
+                  </option>
+                ))}
+              </select>
 
-            <button className="secondary-button">Filter</button>
-            <button className="secondary-button">Export</button>
+              <button className="secondary-button">{t("common.filter")}</button>
+              <button className="secondary-button">{t("common.export")}</button>
+            </div>
           </div>
-        </div>
-            <SupplierTable 
-            
+
+          <SupplierTable
             suppliers={filteredSuppliers}
             onEditSupplier={handleEditSupplier}
-            onInactiveSupplier={handleInactiveSupplier} 
+            onInactiveSupplier={handleInactiveSupplier}
             onSubmitSupplier={handleSubmitSupplier}
             onRfcValidation={handleRfcValidation}
             onApproveSupplier={handleApproveSupplier}
             onRejectSupplier={handleRejectSupplier}
             onResubmitSupplier={handleResubmitSupplier}
-
-            />
-          </Card>
-        </main>
-    
-      </div>
-    );
-  }
+          />
+        </Card>
+      </main>
+    </div>
+  );
+}
 
 export default Suppliers;
