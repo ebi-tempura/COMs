@@ -1,10 +1,14 @@
 import { useState } from "react";
 import Button from "../common/Button";
+import { WORK_ORDER_STATUS } from "../../security/constants";
+import { useLanguage } from "../../i18n/LanguageContext";
+
 const initialForm = {
   title: "",
   supplier: "",
   amount: "",
   priority: "Medium",
+  type: "Normal",
   category: "",
   location: "",
   requestedBy: "",
@@ -12,7 +16,26 @@ const initialForm = {
   description: "",
 };
 
-function WorkOrderForm({ onCreateWorkOrder,workOrders}) {
+const suppliers = [
+  "Electro Services SA",
+  "Aqua Solutions",
+  "BuildWell Co.",
+  "Lift Experts",
+  "GreenCare",
+];
+const priorities = ["Low", "Medium", "High"];
+const workOrderTypes = ["Emergency", "Normal"];
+const categories = [
+  "Electrical",
+  "Plumbing",
+  "Maintenance",
+  "Safety",
+  "Landscaping",
+];
+const requesters = ["Admin User", "Resident #203", "Resident #105"];
+
+function WorkOrderForm({ onCreateWorkOrder, workOrders }) {
+  const { t, userName, valueLabel } = useLanguage();
   const [formData, setFormData] = useState(initialForm);
 
   function handleChange(event) {
@@ -27,8 +50,6 @@ function WorkOrderForm({ onCreateWorkOrder,workOrders}) {
   function handleSubmit(event) {
     event.preventDefault();
 
-    const currentYear = new Date().getFullYear();
-
     const newWorkOrder = {
       id: `WO-${new Date().getFullYear()}-${String(workOrders.length + 1).padStart(4, "0")}`,
       title: formData.title,
@@ -36,8 +57,9 @@ function WorkOrderForm({ onCreateWorkOrder,workOrders}) {
       supplier: formData.supplier,
       requestedBy: formData.requestedBy,
       amount: Number(formData.amount),
-      status: "Draft",
+      status: WORK_ORDER_STATUS.DRAFT,
       priority: formData.priority,
+      type: formData.type,
       targetDate: formData.targetDate,
       location: formData.location,
       description: formData.description,
@@ -50,36 +72,35 @@ function WorkOrderForm({ onCreateWorkOrder,workOrders}) {
   return (
     <form className="form-grid" onSubmit={handleSubmit}>
       <div className="form-group">
-        <label>Title *</label>
+        <label>{t("workOrderForm.title")}</label>
         <input
           name="title"
           value={formData.title}
           onChange={handleChange}
-          placeholder="Enter work order title"
+          placeholder={t("workOrderForm.titlePlaceholder")}
           required
         />
       </div>
 
       <div className="form-group">
-        <label>Supplier *</label>
+        <label>{t("workOrderForm.supplier")}</label>
         <select
           name="supplier"
           value={formData.supplier}
           onChange={handleChange}
-          placeholder="Supplier"
           required
         >
-          <option value="">Select supplier</option>
-          <option>Electro Services SA</option>
-          <option>Aqua Solutions</option>
-          <option>BuildWell Co.</option>
-          <option>Lift Experts</option>
-          <option>GreenCare</option>
+          <option value="">{t("workOrderForm.selectSupplier")}</option>
+          {suppliers.map((supplier) => (
+            <option key={supplier} value={supplier}>
+              {supplier}
+            </option>
+          ))}
         </select>
       </div>
 
       <div className="form-group">
-        <label>Requested Amount (MXN) *</label>
+        <label>{t("workOrderForm.amount")}</label>
         <input
           name="amount"
           type="number"
@@ -91,69 +112,76 @@ function WorkOrderForm({ onCreateWorkOrder,workOrders}) {
       </div>
 
       <div className="form-group">
-        <label>Priority *</label>
+        <label>{t("workOrderForm.priority")}</label>
         <select name="priority" value={formData.priority} onChange={handleChange}>
-          <option value="">Select priority</option>
-          <option>Low</option>
-          <option>Medium</option>
-          <option>High</option>
+          <option value="">{t("workOrderForm.selectPriority")}</option>
+          {priorities.map((priority) => (
+            <option key={priority} value={priority}>
+              {valueLabel("priority", priority)}
+            </option>
+          ))}
         </select>
       </div>
 
       <div className="form-group">
-        <label>Type*</label>
-        <select name="Work order type" value={formData.type} onChange={handleChange} required>
-        <option value="">Select type</option>
-          <option>Emergency</option>
-          <option>Normal</option>
+        <label>{t("workOrderForm.type")}</label>
+        <select name="type" value={formData.type} onChange={handleChange} required>
+          <option value="">{t("workOrderForm.selectType")}</option>
+          {workOrderTypes.map((type) => (
+            <option key={type} value={type}>
+              {valueLabel("workOrderType", type)}
+            </option>
+          ))}
         </select>
       </div>
 
       <div className="form-group">
-        <label>Category *</label>
+        <label>{t("workOrderForm.category")}</label>
         <select
           name="category"
           value={formData.category}
           onChange={handleChange}
           required
         >
-          <option value="">Select category</option>
-          <option>Electrical</option>
-          <option>Plumbing</option>
-          <option>Maintenance</option>
-          <option>Safety</option>
-          <option>Landscaping</option>
+          <option value="">{t("workOrderForm.selectCategory")}</option>
+          {categories.map((category) => (
+            <option key={category} value={category}>
+              {valueLabel("category", category)}
+            </option>
+          ))}
         </select>
       </div>
 
       <div className="form-group">
-        <label>Location *</label>
+        <label>{t("workOrderForm.location")}</label>
         <input
           name="location"
           value={formData.location}
           onChange={handleChange}
-          placeholder="e.g., Lobby, Parking, Roof"
+          placeholder={t("workOrderForm.locationPlaceholder")}
           required
         />
       </div>
 
       <div className="form-group">
-        <label>Requested By *</label>
+        <label>{t("workOrderForm.requestedBy")}</label>
         <select
           name="requestedBy"
           value={formData.requestedBy}
           onChange={handleChange}
           required
         >
-          <option value="">Select requester</option>
-          <option>Admin User</option>
-          <option>Resident #203</option>
-          <option>Resident #105</option>
+          <option value="">{t("workOrderForm.selectRequester")}</option>
+          {requesters.map((requester) => (
+            <option key={requester} value={requester}>
+              {userName(requester)}
+            </option>
+          ))}
         </select>
       </div>
 
       <div className="form-group">
-        <label>Target Date</label>
+        <label>{t("workOrderForm.targetDate")}</label>
         <input
           name="targetDate"
           type="date"
@@ -163,33 +191,27 @@ function WorkOrderForm({ onCreateWorkOrder,workOrders}) {
       </div>
 
       <div className="form-group form-wide">
-        <label>Description *</label>
+        <label>{t("workOrderForm.description")}</label>
         <textarea
           name="description"
           value={formData.description}
           onChange={handleChange}
-          placeholder="Describe the issue, work needed, and any relevant details..."
+          placeholder={t("workOrderForm.descriptionPlaceholder")}
           required
         />
       </div>
 
       <div className="attachment-box form-wide">
-        <strong>Attachments</strong>
-        <p>Drag and drop files here or</p>
-        <button type="button">Browse Files</button>
-        <small>PDF, JPG, PNG max. 10MB each</small>
+        <strong>{t("workOrderForm.attachments")}</strong>
+        <p>{t("workOrderForm.dropFiles")}</p>
+        <button type="button">{t("workOrderForm.browseFiles")}</button>
+        <small>{t("workOrderForm.fileHelp")}</small>
       </div>
 
       <div className="form-actions form-wide">
         <Button type="submit" className="primary-action-button">
-          Create Work Order
+          {t("workOrderForm.create")}
         </Button>
-
-      {/*/
-        <button type="button" className="secondary-button" onClick={onCancel}>
-          Cancel
-        </button>*/}
-
       </div>
     </form>
   );
