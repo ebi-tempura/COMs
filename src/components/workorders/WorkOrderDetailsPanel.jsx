@@ -17,9 +17,6 @@ function WorkOrderDetailsPanel({ workOrder, onClose }) {
         aria-labelledby="work-order-details-title"
       >
         <div className="details-panel-header">
-          <button type="button" onClick={onClose}>
-            {t("common.close")}
-          </button>
 
           <div>
             <h2 id="work-order-details-title">{workOrder.id}</h2>
@@ -51,10 +48,17 @@ function WorkOrderDetailsPanel({ workOrder, onClose }) {
             {workOrder.description}
           </p>
         </div>
-
-        <hr />
-        <h3>{t("workOrderDetails.auditTrail")}</h3>
+        <hr/>
+        
         <WorkOrderAuditTrail workOrder={workOrder} />
+
+       <p></p>
+        
+        <button type="button" className="primary-action-button" onClick={onClose}>
+          {t("common.close")}
+        </button>
+        
+      
       </section>
     </div>
   );

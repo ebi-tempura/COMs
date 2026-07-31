@@ -38,11 +38,10 @@ function canCurrentUserApproveCompletion(workOrder, currentUser) {
     workOrder.completionApprovalRoute?.[
       workOrder.currentCompletionApprovalStep
     ];
-
+   
   if (!currentStep || !currentUser) {
     return false;
   }
-
   const isRequiredApprover = currentStep.role === currentUser.role;
   const isCompletionSubmitter =
     workOrder.completionSubmittedBy?.userId === currentUser.id;
@@ -63,9 +62,10 @@ function WorkOrderTable({
   onRejectCompletion,
   onEditWorkOrder,
   onInactiveWorkOrder,
+  onCloseWorkOrderForm
 }) {
   const { formatCurrency, statusLabel, t, userName, valueLabel } = useLanguage();
-
+  
   return (
     <div className="table-wrapper">
       <table className="data-table">
@@ -185,9 +185,9 @@ function WorkOrderTable({
                       >
                         <button
                           type="button"
-                          onClick={() => onStartWork(workOrder.id)}
+                          onClick={() => onStartWork(workOrder.id)}          
                         >
-                          {t("workOrderTable.startWork")}
+                            {t("workOrderTable.startWork")}
                         </button>
                       </Can>
                     )}

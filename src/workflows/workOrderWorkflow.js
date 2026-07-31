@@ -146,18 +146,22 @@ export function submitWorkOrder(workOrder, user) {
         return workOrder;
     }
 
-    const lockedWorkOrder = lockWorkOrderApprovalRoute(workOrder);
+    const lockedWorkOrder =
+        lockWorkOrderApprovalRoute(workOrder);
 
     return updateRecordStatus({
         record: {
             ...lockedWorkOrder,
-            approvalRouteLabel: formatWorkOrderApprovalRoute(
-                lockedWorkOrder.approvalRoute
-            ),
+            approvalRouteLabel:
+                formatWorkOrderApprovalRoute(
+                    lockedWorkOrder.approvalRoute
+                ),
             currentApprovalStep: 0,
-            version: lockedWorkOrder.approvalRouteVersion,
+            version:
+                lockedWorkOrder.approvalRouteVersion,
         },
-        nextStatus: WORK_ORDER_STATUS.PENDING_PRESIDENT_APPROVAL,
+        nextStatus:
+            WORK_ORDER_STATUS.PENDING_PRESIDENT_APPROVAL,
         action: ACTIONS.SUBMIT,
         user,
     });
@@ -285,6 +289,7 @@ export function startWorkOrder(workOrder, user) {
     }
 
     return updateRecordStatus({
+
         record: workOrder,
         nextStatus: WORK_ORDER_STATUS.IN_PROGRESS,
         action: ACTIONS.START_WORK,

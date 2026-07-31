@@ -74,6 +74,14 @@ export const ROLES = Object.freeze({
     DELETED: "Deleted",
   });
   
+  export const WORK_ORDER_COMPLETION_REPORT_STATUS = Object.freeze({
+    NOT_STARTED: "Not Started",
+    DRAFT: "Draft",
+    SUBMITTED: "Submitted",
+    RETURNED: "Returned",
+    APPROVED: "Approved",
+  });
+
   export const WORK_ORDER_FLOW_TYPE = Object.freeze({
     NORMAL: "normal",
     HIGH_VALUE: "highValue",

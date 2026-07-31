@@ -4,6 +4,7 @@ import Can from "../../components/security/Can";
 import WorkOrderForm from "../../components/workorders/WorkOrderForm";
 import WorkOrderTable from "../../components/workorders/WorkOrderTable";
 import WorkOrderDetailsPanel from "../../components/workorders/WorkOrderDetailsPanel";
+import WorkOrderCompletionReportForm from "../../components/workorders/WorkOrderCompletionReportForm";
 import { createAuditEvent } from "../../workflows/workflowEngine";
 import { useAuth } from "../../auth/AuthContext";
 import { useLanguage } from "../../i18n/LanguageContext";
@@ -45,14 +46,23 @@ const initialWorkOrders = [
 function WorkOrders() {
   const { user } = useAuth();
   const { statusLabel, t, workflowMessage } = useLanguage();
+  
   const [workOrders, setWorkOrders] = useState(initialWorkOrders);
   const [selectedWorkOrderId, setSelectedWorkOrderId] = useState(null);
+  const [completionReportWorkOrderId,setCompletitionReportWorkOrderId]=useState(null);
   const [showForm, setShowForm] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const completionReportWorkOrder =
+    workOrders.find(
+    (workOrder) => workOrder.id === completionReportWorkOrderId
+    ) ?? null;
+ 
 
   const selectedWorkOrder =
     workOrders.find((workOrder) => workOrder.id === selectedWorkOrderId) ?? null;
+
+
 
   function handleCreateWorkOrder(newWorkOrder) {
     const timestamp = new Date().toISOString();
@@ -260,7 +270,7 @@ function WorkOrders() {
           onApproveWorkOrder={handleApproveWorkOrder}
           onRejectWorkOrder={handleRejectWorkOrder}
           onStartWork={handleStartWork}
-          onSubmitCompletion={handleSubmitCompletion}
+          onSubmitCompletion={setCompletitionReportWorkOrderId}
           onApproveCompletion={handleApproveCompletion}
           onRejectCompletion={handleRejectCompletion}
         />
@@ -281,6 +291,23 @@ function WorkOrders() {
           </div>
         </div>
       </Card>
+
+      {completionReportWorkOrder && (
+     <Can
+        module={MODULES.WORK_ORDERS}
+        action={ACTIONS.COMPLETE_WORK}
+     >
+     <Card>
+        <WorkOrderCompletionReportForm
+        workOrder={completionReportWorkOrder}
+        onSubmitReport={(completionReport) => {
+        console.log("Completion report:", completionReport);
+        }}
+        onCancel={() => setCompletionReportWorkOrderId(null)}
+        />
+      </Card>
+      </Can>
+    )}
 
       {selectedWorkOrder && (
         <Card>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Button from "../common/Button";
-import { WORK_ORDER_STATUS } from "../../security/constants";
+import { WORK_ORDER_STATUS, WORK_ORDER_COMPLETION_REPORT_STATUS } from "../../security/constants";
 import { useLanguage } from "../../i18n/LanguageContext";
 
 const initialForm = {
@@ -34,7 +34,7 @@ const categories = [
 ];
 const requesters = ["Admin User", "Resident #203", "Resident #105"];
 
-function WorkOrderForm({ onCreateWorkOrder, workOrders }) {
+function WorkOrderForm({ onCreateWorkOrder, workOrders,onCancel }) {
   const { t, userName, valueLabel } = useLanguage();
   const [formData, setFormData] = useState(initialForm);
 
@@ -58,6 +58,8 @@ function WorkOrderForm({ onCreateWorkOrder, workOrders }) {
       requestedBy: formData.requestedBy,
       amount: Number(formData.amount),
       status: WORK_ORDER_STATUS.DRAFT,
+      completitionReportStatus: WORK_ORDER_COMPLETION_REPORT_STATUS.NOT_STARTED,
+      completitionReport:null,
       priority: formData.priority,
       type: formData.type,
       targetDate: formData.targetDate,
