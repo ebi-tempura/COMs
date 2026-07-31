@@ -1,7 +1,6 @@
 import { useLanguage } from "../../i18n/LanguageContext";
 import "../../styles/format.css"
 
-
 function WorkOrderAuditTrail({ workOrder }) {
   const {
     actionLabel,
@@ -15,16 +14,31 @@ function WorkOrderAuditTrail({ workOrder }) {
   } = useLanguage();
 
   const events = workOrder?.auditTrail ?? workOrder?.approvalHistory ?? [];
-
+  
   const auditActionLabel = (action) => {
     const auditLabels = {
+      create: "Work Order Created by",
+      edit: "Work Order Edited by",
       submit: "Work Order Submitted by",
       approve: "Work Order Approved by",
       reject: "Work Order Rejected by",
-      startWork: "Work Order Started by"
+      startWork: "Work Order Started by",
     };
-  
     return auditLabels[action] ?? actionLabel(action);
+  };
+  
+  const auditDateLabel = (action) => {
+    const labels = {
+      create: "Date and time of creation: ",
+      edit: "Date and time of editing: ",
+      submit: "Date and time of submission: ",
+      approve: "Date and time of approval: ",
+      reject: "Date and time of rejection: ",
+      startWork: "Date and time work started: ",
+      submitCompletion: "Date and time completion was submitted: ",
+      approveCompletion: "Date and time completion was approved: ",
+    };
+    return labels[action] ?? "Date and time of activity: ";
   };
 
   if (events.length === 0) {
@@ -32,7 +46,7 @@ function WorkOrderAuditTrail({ workOrder }) {
   }
 
   return (
-    <details className="auidt-expander" open>
+    <details className="audit-expander" open>
        <summary className="audit-expander-summary">
         {t("workOrderDetails.auditTrail")} 
         <span>
@@ -89,13 +103,9 @@ function WorkOrderAuditTrail({ workOrder }) {
               )}
 
               <strong>
-                {event.action == "submit"
-                 ? "Date and time of submission: "
-                 : "Date and time of approval: "
-                }
+                {auditDateLabel(event.action)}
               </strong>
            
-               
               <time>{formatDateTime(event.timestamp)}</time>
 
               {event.comment && (
@@ -106,6 +116,7 @@ function WorkOrderAuditTrail({ workOrder }) {
 
               {event.changes?.length > 0 && (
                 <details>
+                  <p></p>
                   <summary>{t("common.viewRecordedValues")}</summary>
                   <ul>
                     {event.changes.map((change, changeIndex) => (
