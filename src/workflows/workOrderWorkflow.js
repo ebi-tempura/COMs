@@ -2,6 +2,7 @@ import {
     ACTIONS,
     ROLES,
     WORK_ORDER_STATUS,
+    WORK_ORDER_COMPLETION_REPORT_STATUS,
 } from "../security/constants";
 
 import { isCreator, updateRecordStatus } from "./workflowEngine";
@@ -255,6 +256,28 @@ export function rejectWorkOrder(workOrder, user, comment) {
 
     validateWorkOrderApprover(workOrder, user);
 
+
+    const rejectedAt = new Date().toISOString();
+
+    const updatedReportVersions =
+    workOrder.completionReportVersions?.map(
+        (reportVersion) =>
+        reportVersion.version === workOrder.completionVersion
+            ? {
+                ...reportVersion,
+                status:
+                WORK_ORDER_COMPLETION_REPORT_STATUS.RETURNED,
+                rejectedAt,
+                rejectedBy: {
+                userId: user.id,
+                userName: user.name,
+                role: user.role,
+                },
+                rejectionComment: comment.trim(),
+            }
+            : reportVersion
+    ) ?? [];
+
     return updateRecordStatus({
         record: {
             ...workOrder,
@@ -266,7 +289,6 @@ export function rejectWorkOrder(workOrder, user, comment) {
         comment: comment.trim(),
     });
 }
-
 
 function validateWorkOrderOperator(user) {
     if (
@@ -413,7 +435,7 @@ export function submitWorkOrderCompletion(
             WORK_ORDER_STATUS
                 .PENDING_COMPLETION_PRESIDENT_APPROVAL,
 
-        action: ACTIONS.COMPLETE_WORK,
+        action: ACTIONS.SUBMIT_COMPLETION,
         user,
     });
 }
@@ -482,75 +504,155 @@ function validateWorkOrderCompletionApprover(
 export function approveWorkOrderCompletion(
     workOrder,
     user
-) {
+  ) {
     validateWorkOrderCompletionApprover(
-        workOrder,
-        user
+      workOrder,
+      user
     );
-
+  
     const nextStepIndex =
-        workOrder.currentCompletionApprovalStep +
-        1;
-
+      workOrder.currentCompletionApprovalStep + 1;
+  
     const nextStep =
-        workOrder.completionApprovalRoute[
-            nextStepIndex
-        ];
-
+      workOrder.completionApprovalRoute[
+        nextStepIndex
+      ];
+  
+    const approvedAt = new Date().toISOString();
+    const isFinalApproval = !nextStep;
+  
+    const approvalRecord = {
+      step:
+        workOrder.currentCompletionApprovalStep + 1,
+  
+      role: user.role,
+  
+      approvedAt,
+  
+      approvedBy: {
+        userId: user.id,
+        userName: user.name,
+        role: user.role,
+      },
+    };
+  
+    const updatedReportVersions =
+      workOrder.completionReportVersions?.map(
+        (reportVersion) => {
+          if (
+            reportVersion.version !==
+            workOrder.completionVersion
+          ) {
+            return reportVersion;
+          }
+  
+          return {
+            ...reportVersion,
+  
+            approvals: [
+              ...(reportVersion.approvals ?? []),
+              approvalRecord,
+            ],
+  
+            status: isFinalApproval
+              ? WORK_ORDER_COMPLETION_REPORT_STATUS.APPROVED
+              : reportVersion.status,
+  
+            ...(isFinalApproval
+              ? {
+                  approvedAt,
+                  approvedBy: {
+                    userId: user.id,
+                    userName: user.name,
+                    role: user.role,
+                  },
+                }
+              : {}),
+          };
+        }
+      ) ?? [];
+  
     return updateRecordStatus({
-        record: {
-            ...workOrder,
-
-            currentCompletionApprovalStep:
-                nextStep
-                    ? nextStepIndex
-                    : null,
-        },
-
-        nextStatus: nextStep
-            ? COMPLETION_STATUS_BY_APPROVER_ROLE[
-                  nextStep.role
-              ]
-            : WORK_ORDER_STATUS.COMPLETED,
-
-        action: ACTIONS.APPROVE,
-        user,
+      record: {
+        ...workOrder,
+  
+        completionReportVersions:
+          updatedReportVersions,
+  
+        currentCompletionApprovalStep:
+          nextStep
+            ? nextStepIndex
+            : null,
+      },
+  
+      nextStatus: nextStep
+        ? COMPLETION_STATUS_BY_APPROVER_ROLE[
+            nextStep.role
+          ]
+        : WORK_ORDER_STATUS.COMPLETED,
+  
+      action: ACTIONS.APPROVE_COMPLETION,
+      user,
     });
-}
+  }
 
 export function rejectWorkOrderCompletion(
     workOrder,
     user,
     comment
-) {
+  ) {
     if (!comment?.trim()) {
-        throw new Error(
-            "Completion rejection requires a comment."
-        );
+      throw new Error(
+        "Completion rejection requires a comment."
+      );
     }
-
+  
     validateWorkOrderCompletionApprover(
-        workOrder,
-        user
+      workOrder,
+      user
     );
-
+  
+    const rejectedAt = new Date().toISOString();
+  
+    const updatedReportVersions =
+      workOrder.completionReportVersions?.map(
+        (reportVersion) =>
+          reportVersion.version ===
+          workOrder.completionVersion
+            ? {
+                ...reportVersion,
+                status:
+                WORK_ORDER_COMPLETION_REPORT_STATUS.RETURNED,
+                rejectedAt,
+                rejectedBy: {
+                  userId: user.id,
+                  userName: user.name,
+                  role: user.role,
+                },
+                rejectionComment: comment.trim(),
+              }
+            : reportVersion
+      ) ?? [];
+  
     return updateRecordStatus({
-        record: {
-            ...workOrder,
-
-            currentCompletionApprovalStep: null,
-            completionApprovalRouteLocked: false,
-        },
-
-        nextStatus:
-            WORK_ORDER_STATUS
-                .COMPLETION_REJECTED,
-
-        action: ACTIONS.REJECT,
-        user,
-        comment: comment.trim(),
+      record: {
+        ...workOrder,
+  
+        completionReportVersions:
+          updatedReportVersions,
+  
+        currentCompletionApprovalStep: null,
+        completionApprovalRouteLocked: false,
+      },
+  
+      nextStatus:
+        WORK_ORDER_STATUS.COMPLETION_REJECTED,
+  
+      action: ACTIONS.REJECT_COMPLETION,
+      user,
+      comment: comment.trim(),
     });
-}
+  }
 
 const workOrderWorkflow = Object.freeze({
     submit: submitWorkOrder,
@@ -583,5 +685,8 @@ const workOrderWorkflow = Object.freeze({
     formatApprovalRoute:
         formatWorkOrderApprovalRoute,
 });
+
+
+
 
 export default workOrderWorkflow;

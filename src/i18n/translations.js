@@ -117,7 +117,31 @@ const english = {
     description: "Description",
     auditTrail: "Audit Trail",
   },
-  audit: { empty: "No audit events have been recorded." },
+  audit: {
+    empty: "No audit events have been recorded.",
+    user: "User",
+    role: "Role",
+    process: "Process",
+  
+    actionCreate: "Work Order Created",
+    actionEdit: "Work Order Edited",
+    actionSubmit: "Work Order Submitted",
+    actionApprove: "Work Order Approved",
+    actionReject: "Work Order Rejected",
+    actionStartWork: "Work Order Started",
+    actionSubmitCompletion: "Completion Report Submitted",
+    actionApproveCompletion: "Completion Report Approved",
+  
+    dateCreate: "Date and time of creation",
+    dateEdit: "Date and time of editing",
+    dateSubmit: "Date and time of submission",
+    dateApprove: "Date and time of approval",
+    dateReject: "Date and time of rejection",
+    dateStartWork: "Date and time work started",
+    dateSubmitCompletion: "Date and time completion was submitted",
+    dateApproveCompletion: "Date and time completion was approved",
+    dateActivity: "Date and time of activity",
+  },
   suppliers: {
     title: "Suppliers",
     subtitle:
@@ -166,6 +190,24 @@ const english = {
     edit: "Edit",
     inactive: "Inactive",
   },
+  completionHistory: {
+    title: "Completion Report History",
+    version: "Version",
+    submittedBy: "Submitted by",
+    role: "Role",
+    submittedAt: "Submitted at",
+    completionDate: "Completion date",
+    workPerformed: "Work performed",
+    observations: "Observations",
+    rejection: "Rejection",
+    reason: "Reason",
+    rejectedBy: "Rejected by",
+    rejectedAt: "Rejected at",
+    approvals: "Approvals",
+    step: "Step",
+    noObservations: "None",
+  },
+
 };
 
 const spanishMexico = {
@@ -284,8 +326,35 @@ const spanishMexico = {
     description: "Descripción",
     auditTrail: "Historial de auditoría",
   },
-  audit: { empty: "No se han registrado eventos de auditoría." },
-  suppliers: {
+  audit: {
+    empty: "No se han registrado eventos de auditoría.",
+    user: "Usuario",
+    role: "Rol",
+    process: "Proceso",
+  
+    actionCreate: "Orden de trabajo creada",
+    actionEdit: "Orden de trabajo editada",
+    actionSubmit: "Orden de trabajo enviada",
+    actionApprove: "Orden de trabajo aprobada",
+    actionReject: "Orden de trabajo rechazada",
+    actionStartWork: "Trabajo iniciado",
+    actionSubmitCompletion: "Reporte de terminación enviado",
+    actionApproveCompletion: "Reporte de terminación aprobado",
+    actionRejectCompletion: "Reporte de terminación rechazado",
+
+  
+    dateCreate: "Fecha y hora de creación",
+    dateEdit: "Fecha y hora de edición",
+    dateSubmit: "Fecha y hora de envío",
+    dateApprove: "Fecha y hora de aprobación",
+    dateReject: "Fecha y hora de rechazo",
+    dateStartWork: "Fecha y hora de inicio del trabajo",
+    dateSubmitCompletion: "Fecha y hora de envío de la terminación",
+    dateApproveCompletion: "Fecha y hora de aprobación de la terminación",
+    dateRejectCompletion: "Fecha y hora del rechazo de la terminación",
+    dateActivity: "Fecha y hora de la actividad",
+  },
+    suppliers: {
     title: "Proveedores",
     subtitle:
       "Gestiona empresas y contratistas individuales autorizados para trabajar en el condominio.",
@@ -422,6 +491,25 @@ const spanishMexico = {
       Card: "Tarjeta",
       Other: "Otro",
     },
+
+    completionHistory: {
+      title: "Historial de reportes de terminación",
+      version: "Versión",
+      submittedBy: "Enviado por",
+      role: "Rol",
+      submittedAt: "Fecha y hora de envío",
+      completionDate: "Fecha de terminación",
+      workPerformed: "Trabajo realizado",
+      observations: "Observaciones",
+      rejection: "Rechazo",
+      reason: "Motivo",
+      rejectedBy: "Rechazado por",
+      rejectedAt: "Fecha y hora del rechazo",
+      approvals: "Aprobaciones",
+      step: "Paso",
+      noObservations: "Ninguna",
+    },
+
   },
   userNames: {
     "super-admin-1": "Usuario superadministrador",

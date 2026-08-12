@@ -26,6 +26,9 @@ export const ROLES = Object.freeze({
     DELETE_INACTIVE: "deleteInactive",
     START_WORK: "startWork",
     COMPLETE_WORK: "completeWork",
+    SUBMIT_COMPLETION: "submitCompletion",
+    APPROVE_COMPLETION: "approveCompletion",
+    REJECT_COMPLETION: "rejectCompletion",
   });
   
   export const SUPPLIER_STATUS = Object.freeze({

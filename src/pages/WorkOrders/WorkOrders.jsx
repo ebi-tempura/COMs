@@ -12,6 +12,7 @@ import {
   ACTIONS,
   MODULES,
   WORK_ORDER_STATUS,
+  WORK_ORDER_COMPLETION_REPORT_STATUS,
 } from "../../security/constants";
 import {
   approveWorkOrder,
@@ -49,7 +50,7 @@ function WorkOrders() {
   
   const [workOrders, setWorkOrders] = useState(initialWorkOrders);
   const [selectedWorkOrderId, setSelectedWorkOrderId] = useState(null);
-  const [completionReportWorkOrderId,setCompletitionReportWorkOrderId]=useState(null);
+  const [completionReportWorkOrderId,setCompletionReportWorkOrderId] = useState(null);
   const [showForm, setShowForm] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -159,11 +160,55 @@ function WorkOrders() {
     }
   }
 
-  function handleSubmitCompletion(workOrderId) {
+  function handleSubmitCompletion(workOrderId, completionReport) {
     try {
-      updateWorkOrder(workOrderId, (workOrder) =>
-        submitWorkOrderCompletion(workOrder, user)
-      );
+      updateWorkOrder(workOrderId, (workOrder) => {
+        const nextVersion =
+          (Number.isInteger(workOrder.completionVersion)
+            ? workOrder.completionVersion
+            : 0) + 1;
+  
+        const timestamp = new Date().toISOString();
+  
+        const reportVersion = {
+          version: nextVersion,
+          status: WORK_ORDER_COMPLETION_REPORT_STATUS.SUBMITTED,
+  
+          submittedAt: timestamp,
+  
+          submittedBy: {
+            userId: user.id,
+            userName: user.name,
+            role: user.role,
+          },
+  
+          report: {
+            ...completionReport,
+          },
+        };
+  
+        const workOrderWithReport = {
+          ...workOrder,
+  
+          // Latest editable report
+          completionReport: {
+            ...completionReport,
+          },
+  
+          // Permanent version history
+          completionReportVersions: [
+            ...(workOrder.completionReportVersions ?? []),
+            reportVersion,
+          ],
+        };
+  
+        return submitWorkOrderCompletion(
+          workOrderWithReport,
+          user
+        );
+      });
+  
+      setCompletionReportWorkOrderId(null);
     } catch (error) {
       showWorkflowError(error);
     }
@@ -270,7 +315,7 @@ function WorkOrders() {
           onApproveWorkOrder={handleApproveWorkOrder}
           onRejectWorkOrder={handleRejectWorkOrder}
           onStartWork={handleStartWork}
-          onSubmitCompletion={setCompletitionReportWorkOrderId}
+          onSubmitCompletion={setCompletionReportWorkOrderId}
           onApproveCompletion={handleApproveCompletion}
           onRejectCompletion={handleRejectCompletion}
         />
@@ -300,14 +345,19 @@ function WorkOrders() {
      <Card>
         <WorkOrderCompletionReportForm
         workOrder={completionReportWorkOrder}
-        onSubmitReport={(completionReport) => {
-        console.log("Completion report:", completionReport);
-        }}
+        initialReport={completionReportWorkOrder.completionReport}
+        onSubmitReport={(completionReport) =>
+          handleSubmitCompletion(
+            completionReportWorkOrder.id,
+            completionReport
+          )
+        }
         onCancel={() => setCompletionReportWorkOrderId(null)}
         />
       </Card>
       </Can>
     )}
+
 
       {selectedWorkOrder && (
         <Card>
@@ -318,6 +368,10 @@ function WorkOrders() {
           />
         </Card>
       )}
+      
+      
+
+
     </div>
   );
 }

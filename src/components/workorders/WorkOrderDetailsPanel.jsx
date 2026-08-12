@@ -1,8 +1,14 @@
+import WorkOrderCompletionReportForm from "./WorkOrderCompletionReportForm";
+import CompletionReportHistory from "./CompletionReportHistory";
 import WorkOrderAuditTrail from "./WorkOrderAuditTrail";
+import { useState } from "react";
 import { useLanguage } from "../../i18n/LanguageContext";
+
 
 function WorkOrderDetailsPanel({ workOrder, onClose }) {
   const { formatCurrency, statusLabel, t, valueLabel } = useLanguage();
+  const [activeSection, setActiveSection] = useState(null);
+
 
   if (!workOrder) {
     return null;
@@ -19,7 +25,7 @@ function WorkOrderDetailsPanel({ workOrder, onClose }) {
         <div className="details-panel-header">
 
           <div>
-            <h2 id="work-order-details-title">{workOrder.id}</h2>
+            <h3 id="work-order-details-title">{workOrder.id}</h3>
             <p>
               <strong>{t("workOrderDetails.title")}:</strong> {workOrder.title}
             </p>
@@ -47,17 +53,69 @@ function WorkOrderDetailsPanel({ workOrder, onClose }) {
             <strong>{t("workOrderDetails.description")}:</strong>{" "}
             {workOrder.description}
           </p>
-        </div>
+        </div>  
         <hr/>
         
-        <WorkOrderAuditTrail workOrder={workOrder} />
+        <div>
+          <h3>Completion report</h3>
+        </div>  
 
-       <p></p>
+        <div className="work-order-completion-report">
+          <p>
+            <strong>{t("workOrderDetails.status")}:</strong>{" "}
+            {statusLabel(workOrder.status)}
+          </p>
+
+        </div>
+
+        <p></p>
+
+      <div className="Work-Order-details-actions">
+        <button 
+          type="button"
+          onClick={() => setActiveSection((currrentSection) => 
+            currrentSection === "auditTrail" ? null : "aduitTrail"
+            )
+          }
+        >
+          Audit Trail
+        </button>
+        
+        <button
+          type="button"
+          onClick={() =>
+            setActiveSection((currentSection) =>
+              currentSection === "completionReport"
+                ? null
+                : "completionReport"
+            )
+          }
+        >
+          Completion Report
+        </button>
+
+        {activeSection === "auditTrail" && (
+        <div className="work-order-details-section">
+          <WorkOrderAuditTrail workOrder={workOrder} />
+        </div>
+         )}
+
+         {activeSection === "completionReport" && (
+        <div className="work-order-details-section">
+          <WorkOrderCompletionReport workOrder={workOrder} />
+        </div>
+        )}
+
+
+      </div>
+
+
+
         
         <button type="button" className="primary-action-button" onClick={onClose}>
           {t("common.close")}
         </button>
-        
+        */}
       
       </section>
     </div>

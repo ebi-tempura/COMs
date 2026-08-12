@@ -17,36 +17,44 @@ function WorkOrderAuditTrail({ workOrder }) {
   
   const auditActionLabel = (action) => {
     const auditLabels = {
-      create: "Work Order Created by",
-      edit: "Work Order Edited by",
-      submit: "Work Order Submitted by",
-      approve: "Work Order Approved by",
-      reject: "Work Order Rejected by",
-      startWork: "Work Order Started by",
+      create: "audit.actionCreate",
+      edit: "audit.actionEdit",
+      submit: "audit.actionSubmit",
+      approve: "audit.actionApprove",
+      reject: "audit.actionReject",
+      startWork: "audit.actionStartWork",
+      completeCompletion: "audit.actionSubmitCompletion",
+      approveCompletion: "audit.actionApproveCompletion",
+      rejectCompletion: "audit.actionRejectCompletion",
     };
-    return auditLabels[action] ?? actionLabel(action);
+  
+    return auditLabels[action]
+      ? t(auditLabels[action])
+      : actionLabel(action);
   };
   
   const auditDateLabel = (action) => {
     const labels = {
-      create: "Date and time of creation: ",
-      edit: "Date and time of editing: ",
-      submit: "Date and time of submission: ",
-      approve: "Date and time of approval: ",
-      reject: "Date and time of rejection: ",
-      startWork: "Date and time work started: ",
-      submitCompletion: "Date and time completion was submitted: ",
-      approveCompletion: "Date and time completion was approved: ",
+      create: "audit.dateCreate",
+      edit: "audit.dateEdit",
+      submit: "audit.dateSubmit",
+      approve: "audit.dateApprove",
+      reject: "audit.dateReject",
+      startWork: "audit.dateStartWork",
+      completeCompletion: "audit.dateSubmitCompletion",
+      approveCompletion: "audit.dateApproveCompletion",
+      rejectCompletion: "audit.dateRejectCompletion",
     };
-    return labels[action] ?? "Date and time of activity: ";
+  
+    return t(labels[action] ?? "audit.dateActivity");
   };
-
   if (events.length === 0) {
     return <p className="audit-empty">{t("audit.empty")}</p>;
   }
 
   return (
-    <details className="audit-expander" open>
+
+    <details className="audit-expander" close>
        <summary className="audit-expander-summary">
         {t("workOrderDetails.auditTrail")} 
         <span>
@@ -55,10 +63,10 @@ function WorkOrderAuditTrail({ workOrder }) {
       <div className="audit-expander-content">
         {events.length === 0 ? (
           <p className="audit-empty">{t("audit.empty")}</p>
-        ) : (
+          ) : (
 
-    <div className="audit-timeline">
-      {events.map((event, index) => {
+         <div className="audit-timeline">
+            {events.map((event, index) => {
         const actorName =
           event.performedBy?.userName ??
           event.userName ??
@@ -71,7 +79,7 @@ function WorkOrderAuditTrail({ workOrder }) {
             className="audit-event"
             key={event.id ?? `${event.timestamp}-${index}`}
           >
-            <div className="audit-event-dot" />
+          <div className="audit-event-dot" />
 
             <div className="audit-event-content">
               <h4>
@@ -103,7 +111,7 @@ function WorkOrderAuditTrail({ workOrder }) {
               )}
 
               <strong>
-                {auditDateLabel(event.action)}
+                {auditDateLabel(event.action)}:
               </strong>
            
               <time>{formatDateTime(event.timestamp)}</time>
@@ -138,6 +146,8 @@ function WorkOrderAuditTrail({ workOrder }) {
       )}
     </div>
     </details>
+  
+     
   );
 }
 

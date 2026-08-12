@@ -11,11 +11,15 @@ const initialForm = {
 
 function WorkOrderCompletionReportForm({
   workOrder,
+  initialReport,
   onSubmitReport,
   onCancel,
 }) {
   const { t } = useLanguage();
-  const [formData, setFormData] = useState(initialForm);
+  const [formData, setFormData] = useState(()=> ({
+    ...initialForm,
+    ...(initialReport ?? {}),
+  }));
 
   function handleChange(event) {
     const { name, value } = event.target;
@@ -33,7 +37,6 @@ function WorkOrderCompletionReportForm({
       completionDate: formData.completionDate,
       workPerformed: formData.workPerformed,
       observations: formData.observations,
-      finalAmount: Number(formData.finalAmount),
     };
 
     onSubmitReport(completionReport);
