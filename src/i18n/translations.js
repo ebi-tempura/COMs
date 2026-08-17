@@ -115,6 +115,11 @@ const english = {
     amount: "Amount",
     priority: "Priority",
     description: "Description",
+    completionReport: "Completion Report",
+    noCompletionReport: "No completion report created.",
+    completionDate: "Completion date",
+    workPerformed: "Work performed",
+    observations: "Observations",
     auditTrail: "Audit Trail",
   },
   audit: {
@@ -324,6 +329,11 @@ const spanishMexico = {
     amount: "Monto",
     priority: "Prioridad",
     description: "Descripción",
+    completionReport: "Reporte de terminación",
+    noCompletionReport: "No se ha creado un reporte de terminación.",
+    completionDate: "Fecha de terminación",
+    workPerformed: "Trabajo realizado",
+    observations: "Observaciones",
     auditTrail: "Historial de auditoría",
   },
   audit: {
