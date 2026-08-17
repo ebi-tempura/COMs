@@ -55,44 +55,33 @@ function WorkOrderDetailsPanel({ workOrder, onClose }) {
           </p>
         </div>  
         <hr/>
-        
-        <div>
-          <h3>Completion report</h3>
-        </div>  
-
-        <div className="work-order-completion-report">
-          <p>
-            <strong>{t("workOrderDetails.status")}:</strong>{" "}
-            {statusLabel(workOrder.status)}
-          </p>
-
-        </div>
-
         <p></p>
 
       <div className="Work-Order-details-actions">
-        <button 
-          type="button"
-          onClick={() => setActiveSection((currrentSection) => 
-            currrentSection === "auditTrail" ? null : "aduitTrail"
-            )
-          }
-        >
-          Audit Trail
-        </button>
-        
-        <button
-          type="button"
-          onClick={() =>
-            setActiveSection((currentSection) =>
-              currentSection === "completionReport"
-                ? null
-                : "completionReport"
-            )
-          }
-        >
-          Completion Report
-        </button>
+        <div className="button-group">
+          <button
+            type="button" 
+            onClick={() =>
+              setActiveSection((currentSection) =>
+                currentSection === "completionReport"
+                  ? null
+                  : "completionReport"
+              )
+            }
+          >
+            Completion Report
+          </button>
+          
+          <button 
+            type="button" 
+            onClick={() => setActiveSection((currrentSection) => 
+              currrentSection === "auditTrail" ? null : "auditTrail"
+              )
+            }
+          >
+            Audit Trail
+          </button>
+        </div>
 
         {activeSection === "auditTrail" && (
         <div className="work-order-details-section">
@@ -108,15 +97,11 @@ function WorkOrderDetailsPanel({ workOrder, onClose }) {
 
 
       </div>
-
-
-
-        
+        <p></p>
         <button type="button" className="primary-action-button" onClick={onClose}>
           {t("common.close")}
         </button>
-        */}
-      
+        
       </section>
     </div>
   );

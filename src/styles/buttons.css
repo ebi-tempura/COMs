@@ -1,6 +1,7 @@
 /* BUTTONS */
 
 .button,
+
 .primary-action-button {
   border: none;
   background: #2563eb;
@@ -41,4 +42,12 @@
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
+}
+
+.button-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: nowrap;
+  
 }
