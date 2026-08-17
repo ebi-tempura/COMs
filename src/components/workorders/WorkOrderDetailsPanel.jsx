@@ -1,5 +1,3 @@
-import WorkOrderCompletionReportForm from "./WorkOrderCompletionReportForm";
-import CompletionReportHistory from "./CompletionReportHistory";
 import WorkOrderAuditTrail from "./WorkOrderAuditTrail";
 import { useState } from "react";
 import { useLanguage } from "../../i18n/LanguageContext";
@@ -9,10 +7,13 @@ function WorkOrderDetailsPanel({ workOrder, onClose }) {
   const { formatCurrency, statusLabel, t, valueLabel } = useLanguage();
   const [activeSection, setActiveSection] = useState(null);
 
-
   if (!workOrder) {
     return null;
   }
+
+  const latestReportVersion = workOrder.completionReportVersions?.at(-1);
+  const completionReport =
+    workOrder.completionReport ?? latestReportVersion?.report ?? null;
 
   return (
     <div className="details-overlay">
@@ -69,7 +70,7 @@ function WorkOrderDetailsPanel({ workOrder, onClose }) {
               )
             }
           >
-            Completion Report
+            {t("workOrderDetails.completionReport")}
           </button>
           
           <button 
@@ -79,7 +80,7 @@ function WorkOrderDetailsPanel({ workOrder, onClose }) {
               )
             }
           >
-            Audit Trail
+            {t("workOrderDetails.auditTrail")}
           </button>
         </div>
 
@@ -91,7 +92,26 @@ function WorkOrderDetailsPanel({ workOrder, onClose }) {
 
          {activeSection === "completionReport" && (
         <div className="work-order-details-section">
-          <WorkOrderCompletionReport workOrder={workOrder} />
+          <h3>{t("workOrderDetails.completionReport")}</h3>
+
+          {!completionReport ? (
+            <p>{t("workOrderDetails.noCompletionReport")}</p>
+          ) : (
+            <div className="work-order-completion-report">
+              <p>
+                <strong>{t("workOrderDetails.completionDate")}:</strong>{" "}
+                {completionReport.completionDate || t("common.none")}
+              </p>
+              <p>
+                <strong>{t("workOrderDetails.workPerformed")}:</strong>{" "}
+                {completionReport.workPerformed || t("common.none")}
+              </p>
+              <p>
+                <strong>{t("workOrderDetails.observations")}:</strong>{" "}
+                {completionReport.observations || t("common.none")}
+              </p>
+            </div>
+          )}
         </div>
         )}
 
