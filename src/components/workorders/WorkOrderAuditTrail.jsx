@@ -78,8 +78,9 @@ function WorkOrderAuditTrail({ workOrder }) {
                 key={event.id ?? `${event.timestamp}-${index}`}
               >
                 <div className="audit-event-dot" />
-
+                
                 <div className="audit-event-content">
+                  <hr />
                   <h4>
                     {event.action
                       ? auditActionLabel(event.action)
