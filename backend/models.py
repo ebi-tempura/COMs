@@ -31,5 +31,5 @@ class WorkOrder(Base):
         String(50),
         default="Draft",
     )
-    description: Mapped[str] = mapped_column(String(2000), nullable = True,)
+    description: Mapped[str | None] = mapped_column(String(2000), nullable = True,)
     
