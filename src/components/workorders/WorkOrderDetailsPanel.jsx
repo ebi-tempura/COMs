@@ -92,12 +92,13 @@ function WorkOrderDetailsPanel({ workOrder, onClose }) {
 
          {activeSection === "completionReport" && (
         <div className="work-order-details-section">
-          <h3>{t("workOrderDetails.completionReport")}</h3>
 
           {!completionReport ? (
             <p>{t("workOrderDetails.noCompletionReport")}</p>
           ) : (
             <div className="work-order-completion-report">
+              <h3>{t("workOrderDetails.completionReport")}</h3>
+              <hr />
               <p>
                 <strong>{t("workOrderDetails.completionDate")}:</strong>{" "}
                 {completionReport.completionDate || t("common.none")}
