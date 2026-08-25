@@ -1,6 +1,7 @@
 from decimal import Decimal
+from datetime import date
 
-from sqlalchemy import Numeric, String
+from sqlalchemy import Numeric, String, Date
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
@@ -32,4 +33,10 @@ class WorkOrder(Base):
         default="Draft",
     )
     description: Mapped[str | None] = mapped_column(String(2000), nullable = True,)
+    type:Mapped[str| None] = mapped_column(String(20), nullable=True)
+    work_order_number: Mapped[str| None] =mapped_column(String(20), nullable= True,)
+    category: Mapped[str| None] =mapped_column(String(100), nullable= True,)
+    location:  Mapped[str| None] =mapped_column(String(200), nullable= True,)
+    target_date:  Mapped[Date| None] =mapped_column(Date, nullable= True,)
+
     

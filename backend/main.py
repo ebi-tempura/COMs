@@ -14,15 +14,18 @@ app = FastAPI(title="COMS API")
 
 def to_work_order_read(record: WorkOrder) -> WorkOrderRead:
     return WorkOrderRead(
+        id=record.work_order_number,
+        status=record.status,
         title=record.title,
         supplier=record.supplier,
         amount=record.amount,
         priority=record.priority,
-        id=record.work_order_number,
+        type=record.type,
+        category=record.category,
+        location=record.location,
+        target_date=record.target_date,
         description=record.description,
-        status=record.status,
     )
-
 
 @app.get("/")
 def read_root():
@@ -39,13 +42,18 @@ def create_work_order(
     database: Session = Depends(get_db),
 ):
     record = WorkOrder(
+
+        status="Draft",
+        created_year=datetime.now().year,
         title=work_order.title,
         supplier=work_order.supplier,
         amount=work_order.amount,
         priority=work_order.priority,
-        status="Draft",
+        type=work_order.type,
+        category=work_order.category,
+        location=work_order.location,
         description=work_order.description,
-        created_year=datetime.now().year,
+        target_date=work_order.target_date,
     )
 
     database.add(record)
