@@ -5,8 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import WorkOrder
-from schemas import WorkOrderCreate, WorkOrderRead
+from models import WorkOrder, Supplier, EmergencyWorkOrder, WorkCompletion
+from schemas import WorkOrderCreate, WorkOrderRead, SupplierCreate, SupplierRead, WorkCompletionCreate,WorkCompletionRead,WorkEmergencyCreate, WorkEmergencyRead
 
 
 app = FastAPI(title="COMS API")
@@ -37,6 +37,10 @@ def read_root():
     response_model=WorkOrderRead,
     status_code=201,
 )
+
+#######################################
+#######################################
+
 def create_work_order(
     work_order: WorkOrderCreate,
     database: Session = Depends(get_db),
@@ -74,6 +78,7 @@ def create_work_order(
     "/api/work-orders",
     response_model=list[WorkOrderRead],
 )
+
 def read_work_orders(
     database: Session = Depends(get_db),
 ):
@@ -85,5 +90,210 @@ def read_work_orders(
 
     return [
         to_work_order_read(record)
+        for record in records
+    ]
+#######################################
+#######################################
+def to_supplier_read(record: Supplier) -> SupplierRead:
+
+    return SupplierRead(
+
+        supplier_id=record.supplier_id,
+        supplier_type=record.supplier_type,
+        supplier_name=record.supplier_name,
+        service_category=record.service_category,
+        contact=record.contact,
+        phone=record.phone,
+        email=record.email,
+        RFC=record.RFC,
+        address=record.address,
+        clabe=record.clabe,
+        payment_method=record.payment_method,
+        Notes=record.Notes,
+        created_at=record.created_at,
+    )
+
+@app.post(
+    "/api/suppliers",
+    response_model=SupplierRead,
+    status_code= 201,
+    )
+
+
+def create_supplier(
+    supplier: SupplierCreate,
+    database:  Session =Depends(get_db),
+):
+    record = Supplier(
+
+    supplier_type=supplier.supplier_type,
+    supplier_name=supplier.supplier_name,
+    service_category=supplier.service_category,
+    contact=supplier.contact,
+    phone=supplier.phone,
+    email=supplier.email,
+    RFC=supplier.RFC,
+    address=supplier.address,
+    clabe=supplier.clabe,
+    payment_method=supplier.payment_method,
+    Notes=supplier.Notes,
+)
+
+    database.add(record)
+    database.flush()
+
+    record.supplier_id =(
+        f"SUP-{datetime.now().year}-"
+        f"{record.database_id:04d}"
+    )
+
+    database.commit()
+    database.refresh(record)
+
+    return to_supplier_read(record)
+
+@app.get(
+    "/api/suppliers",
+    response_model=list[SupplierRead],
+)
+
+def read_supplier (
+    database: Session = Depends(get_db),
+):
+    statement = select (Supplier).order_by(
+        Supplier.database_id)
+
+    records = database.scalars(statement).all()
+
+    return[
+        to_supplier_read(record)
+        for record in records
+    ]
+
+#######################################
+#######################################
+
+def to_work_emergency_read(record: EmergencyWorkOrder) -> WorkEmergencyRead:
+
+    return WorkEmergencyRead(
+
+        id=record.database_id,
+        work_order_id=record.work_order_id,
+        created_at=record.created_at,
+        wo_emergency_what=record.wo_emergency_what,
+        wo_emergency_where=record.wo_emergency_where,
+        wo_emergency_when=record.wo_emergency_when,
+        wo_emergency_who=record.wo_emergency_who,
+        wo_emergency_why=record.wo_emergency_why,
+        wo_emergency_howmany=record.wo_emergency_howmany,
+        wo_emergency_howmuch=record.wo_emergency_howmuch,
+    )
+
+@app.post(
+    "/api/work-orders/{work_order_id}/WO-emergency",
+    response_model= WorkEmergencyRead,
+    status_code= 201
+    )
+
+def create_work_emergency(
+    work_order_id:int,
+    emergency: WorkEmergencyCreate,
+    database: Session = Depends(get_db)
+    ):
+
+    record = EmergencyWorkOrder(
+        work_order_id=work_order_id,
+        wo_emergency_what=emergency.wo_emergency_what,
+        wo_emergency_where=emergency.wo_emergency_where,
+        wo_emergency_when=emergency.wo_emergency_when,
+        wo_emergency_who=emergency.wo_emergency_who,
+        wo_emergency_why=emergency.wo_emergency_why,
+        wo_emergency_howmany=emergency.wo_emergency_howmany,
+        wo_emergency_howmuch=emergency.wo_emergency_howmuch,
+    )
+
+    database.add(record)
+    database.commit()
+    database.refresh(record)
+
+    return to_work_emergency_read (record)
+
+@app.get(
+    "/api/work-orders/{work_order_id}/WO-emergency",
+    response_model= list[WorkEmergencyRead]
+    )
+
+def read_work_emergency(
+    work_order_id:int,
+    database: Session =Depends(get_db),
+):
+    statement = (select (EmergencyWorkOrder)
+                 .where(
+        EmergencyWorkOrder.work_order_id == work_order_id).order_by(EmergencyWorkOrder.database_id)
+)
+    records = database.scalars(statement).all()
+
+    return[
+        to_work_emergency_read(record)
+        for record in records
+    ]
+
+#######################################
+#######################################
+
+def to_work_order_completion_read (record: WorkCompletion) -> WorkCompletionRead:
+
+    return WorkCompletionRead(
+        id= record.database_id,
+        work_order_id=record.work_order_id,
+        created_at=record.created_at,
+        work_performed_date=record.work_performed_date,
+        work_performed_description=record.work_performed_description,
+        work_performed_observation=record.work_performed_observation,
+    )
+
+@app.post(
+        "/api/work-orders/{work_order_id}/WO-completion",
+        response_model= WorkCompletionRead,
+        status_code= 201
+)
+
+
+def create_work_completion (
+    work_order_id:int,
+    completion: WorkCompletionCreate,
+    database: Session = Depends (get_db)
+    ): 
+
+    record = WorkCompletion(
+        work_order_id=work_order_id,
+        work_performed_date= completion.work_performed_date,
+        work_performed_description=completion.work_performed_description,
+        work_performed_observation=completion.work_performed_observation,
+    )
+
+    database.add(record)
+    database.commit()
+    database.refresh(record)
+
+    return to_work_order_completion_read (record)
+
+@app.get(
+    "/api/work-orders/{work_order_id}/WO-completion",
+    response_model= list[WorkCompletionRead]
+    )
+def read_work_completion(
+    work_order_id:int,
+    database: Session = Depends(get_db),
+):
+    statement = (select(WorkCompletion)
+                .where(                    
+                WorkCompletion.work_order_id == work_order_id).order_by(WorkCompletion.database_id)
+
+)
+    records = database.scalars(statement).all()
+
+    return[
+        to_work_order_completion_read (record)
         for record in records
     ]
