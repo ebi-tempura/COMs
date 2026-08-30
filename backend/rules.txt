@@ -1,0 +1,9 @@
+What	Convention	COMS example
+Python classes	PascalCase	WorkOrder, Supplier, User
+Python variables	snake_case	work_order, supplier_name
+Python functions	snake_case	create_work_order()
+Database tables	lowercase snake_case	work_orders, suppliers, users
+Database columns	lowercase snake_case	user_id, supplier_name, target_date
+Constants	UPPER_SNAKE_CASE	WORK_ORDER_STATUS
+React components	PascalCase	WorkOrderForm, AuditTrail
+JS variables/functions	camelCase	workOrder, handleSubmit

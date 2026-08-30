@@ -93,12 +93,6 @@ def upgrade() -> None:
             nullable=False,
         )
         batch_op.alter_column(
-            "work_performed_Date",
-            new_column_name="work_performed_date",
-            existing_type=sa.Date(),
-            nullable=False,
-        )
-        batch_op.alter_column(
             "work_performed_description",
             existing_type=sa.String(length=500),
             nullable=False,
@@ -207,12 +201,6 @@ def downgrade() -> None:
             new_column_name="create_time",
             existing_type=sa.DateTime(timezone=True),
             type_=sa.DateTime(),
-            nullable=True,
-        )
-        batch_op.alter_column(
-            "work_performed_date",
-            new_column_name="work_performed_Date",
-            existing_type=sa.Date(),
             nullable=True,
         )
         batch_op.alter_column(

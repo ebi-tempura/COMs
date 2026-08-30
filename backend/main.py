@@ -1,16 +1,167 @@
 from datetime import datetime
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import WorkOrder, Supplier, EmergencyWorkOrder, WorkCompletion
-from schemas import WorkOrderCreate, WorkOrderRead, SupplierCreate, SupplierRead, WorkCompletionCreate,WorkCompletionRead,WorkEmergencyCreate, WorkEmergencyRead
+from models import (BuildingAccount, User,
+                    WorkOrder, Supplier,
+                    EmergencyWorkOrder, WorkCompletion)
+from schemas import (BuildingAccountCreate, BuildingAccountRead,
+                    UserCreate, UserRead,
+                    WorkOrderCreate, WorkOrderRead,
+                    SupplierCreate, SupplierRead,
+                    WorkCompletionCreate,WorkCompletionRead,
+                    WorkEmergencyCreate, WorkEmergencyRead)
 
 
 app = FastAPI(title="COMS API")
 
+@app.get("/")
+def read_root():
+    return {"message": "COMS API is running"}
+
+#######################################
+#Building Account
+#######################################
+def to_building_account_read(record: BuildingAccount) ->BuildingAccountRead:
+    return BuildingAccountRead(
+        database_id=record.database_id,
+        account_id=record.account_id,
+        account_name=record.account_name,
+        building_name=record.building_name,
+        building_address=record.building_address,
+        account_status=record.account_status,
+        created_at=record.created_at,
+    )
+
+@app.post (
+        "/api/building-accounts",
+        response_model=BuildingAccountRead,
+        status_code=201,
+)
+
+def create_building_account(
+    building_account: BuildingAccountCreate,
+    database: Session = Depends(get_db),
+):
+    record = BuildingAccount(
+        account_id=building_account.account_id,
+        database_id=building_account.database_id,
+        account_name=building_account.account_name,
+        building_name=building_account.building_name,
+        building_address=building_account.building_address,
+        account_status=building_account.account_status,
+        #created_at=building_account.created_at,  
+    )
+
+    database.add(record)
+    database.commit()
+    database.refresh(record)
+
+    return to_building_account_read(record)
+
+@app.get (
+        "/api/building-accounts",
+        response_model=list[BuildingAccountRead],
+)
+
+def read_building_account(
+    database: Session = Depends(get_db)
+):
+    statement =select(BuildingAccount).order_by(
+        BuildingAccount.database_id
+    )
+
+    records =database.scalars(statement).all()
+
+    return[
+        to_building_account_read(record)
+        for record in records
+    ]
+
+#######################################
+#User   
+#######################################
+
+def to_user_read(record: User) ->UserRead:
+    return UserRead(
+        database_id=record.database_id,
+        account_id=record.account_id,
+        #account_database_id=record.account_database_id,
+        user_name=record.user_name,
+        email=record.email,
+        first_name=record.first_name,
+        last_name=record.last_name,
+        user_role=record.user_role,
+        status=record.status,
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+        last_login_at= record.last_login_at,
+    )
+
+@app.post (
+        "/api/users",
+        response_model=UserRead,
+        status_code=201,
+)
+
+def create_user(
+    user : UserCreate,
+    database: Session = Depends(get_db),
+):
+    statement = select (BuildingAccount).where(
+        BuildingAccount.account_id == user.account_id
+    )
+
+    building_account = database.scalar(statement)
+
+    if building_account is None:
+        raise HTTPException(
+            status_code=404,
+            detail= "Building account not found"
+
+        )
+    
+    record = User(
+   #    account_database_id=building_account.account_database_id,
+        account_id = building_account.account_id,
+        user_name=user.user_name,
+        email=user.email,
+        password_hash=user.password,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        user_role=user.user_role,
+        status=user.status,
+    )
+    database.add(record)
+    database.commit()
+    database.refresh(record)
+
+    return to_user_read(record)
+
+@app.get (
+        "/api/users",
+        response_model=list[UserRead],
+)
+
+def read_user(
+    database: Session = Depends(get_db)
+):
+    statement =select(User).order_by(
+        User.database_id
+    )
+
+    records =database.scalars(statement).all()
+
+    return[
+        to_user_read(record)
+        for record  in records
+    ]
+
+#######################################
+#######################################
 
 def to_work_order_read(record: WorkOrder) -> WorkOrderRead:
     return WorkOrderRead(
@@ -27,19 +178,11 @@ def to_work_order_read(record: WorkOrder) -> WorkOrderRead:
         description=record.description,
     )
 
-@app.get("/")
-def read_root():
-    return {"message": "COMS API is running"}
-
-
 @app.post(
     "/api/work-orders",
     response_model=WorkOrderRead,
     status_code=201,
 )
-
-#######################################
-#######################################
 
 def create_work_order(
     work_order: WorkOrderCreate,
@@ -72,7 +215,6 @@ def create_work_order(
     database.refresh(record)
 
     return to_work_order_read(record)
-
 
 @app.get(
     "/api/work-orders",
@@ -118,7 +260,6 @@ def to_supplier_read(record: Supplier) -> SupplierRead:
     response_model=SupplierRead,
     status_code= 201,
     )
-
 
 def create_supplier(
     supplier: SupplierCreate,
@@ -258,7 +399,6 @@ def to_work_order_completion_read (record: WorkCompletion) -> WorkCompletionRead
         status_code= 201
 )
 
-
 def create_work_completion (
     work_order_id:int,
     completion: WorkCompletionCreate,
@@ -282,6 +422,7 @@ def create_work_completion (
     "/api/work-orders/{work_order_id}/WO-completion",
     response_model= list[WorkCompletionRead]
     )
+
 def read_work_completion(
     work_order_id:int,
     database: Session = Depends(get_db),
@@ -297,3 +438,6 @@ def read_work_completion(
         to_work_order_completion_read (record)
         for record in records
     ]
+
+#######################################
+#######################################
