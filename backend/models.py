@@ -35,7 +35,7 @@ class User (Base):
     __table_args__= {"sqlite_autoincrement":True}
 
     database_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    account_id: Mapped[str] = mapped_column(ForeignKey("building_account.account.id"),nullable=False,index=True,)
+    account_id: Mapped[str] = mapped_column(ForeignKey("building_account.account_id"),nullable=False,index=True,)
 #   account_database_id: Mapped[int] = mapped_column(ForeignKey("building_account.database_id"),index=True, nullable=False)
 
     user_name: Mapped[str] = mapped_column(String(50),nullable=False)
