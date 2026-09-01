@@ -69,7 +69,7 @@ class WorkOrder(Base):
     __table_args__ = {"sqlite_autoincrement": True}
 
     database_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    account_database_id: Mapped[int] = mapped_column(ForeignKey("building_account.database_id"),index=True, nullable=False)
+    account_id: Mapped[str] = mapped_column(ForeignKey("building_account.account_id"),index=True, nullable=False)
 
     created_at: Mapped [datetime] = mapped_column (
         DateTime(timezone = True), 
@@ -111,7 +111,6 @@ class WorkCompletion(Base):
 
     database_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     
-    
     work_order_id: Mapped[int] = mapped_column(
     ForeignKey("work_orders.database_id"),
     nullable=False,
@@ -128,7 +127,7 @@ class WorkCompletion(Base):
     work_performed_observation: Mapped[str] = mapped_column(String(500), nullable= False,)
     work_performed_date: Mapped[date] = mapped_column(Date, nullable= False,)
 
-#Reverse relationships
+    #Reverse relationships
 
     #building_account:Mapped ["BuildingAccount"] = relationship(back_populates= "work_order_completions")   
 
@@ -138,12 +137,9 @@ class EmergencyWorkOrder(Base):
     __table_args__= {"sqlite_autoincrement": True}
 
     database_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    work_order_id: Mapped[int] = mapped_column(ForeignKey("work_orders.database_id"),nullable=False,index=True,)
 
-    work_order_id: Mapped[int] = mapped_column(
-    ForeignKey("work_orders.database_id"),
-    nullable=False,
-    index=True,
-    )
+
     created_at: Mapped [datetime] = mapped_column (
         DateTime(timezone=True), 
         default = lambda: datetime.now(timezone.utc),
@@ -157,7 +153,7 @@ class EmergencyWorkOrder(Base):
     wo_emergency_howmany: Mapped[str] = mapped_column(String(500), nullable= False,)
     wo_emergency_howmuch: Mapped[str] = mapped_column(String(500), nullable= False,)
 
-#Reverse relationships
+ #Reverse relationships
 
    # building_account:Mapped ["BuildingAccount"] = relationship(back_populates= "emergency_work_orders")
     
@@ -167,7 +163,7 @@ class Supplier(Base):
     __table_args__= {"sqlite_autoincrement": True}
 
     database_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    account_database_id: Mapped[int] = mapped_column(ForeignKey("building_account.database_id"),index=True, nullable=False)
+    account_id: Mapped[str] = mapped_column(ForeignKey("building_account.account_id"),index=True, nullable=False)
 
     created_at: Mapped [datetime] = mapped_column (
         DateTime(timezone=True), 
@@ -187,7 +183,7 @@ class Supplier(Base):
     payment_method: Mapped[str] = mapped_column(String(200), nullable = False,)
     notes: Mapped[str | None] = mapped_column(String(2000), nullable = True,)
 
-#Reverse relationships
+    #Reverse relationships
 
     building_account:Mapped ["BuildingAccount"] = relationship(back_populates= "suppliers")
     

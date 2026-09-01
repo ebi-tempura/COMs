@@ -122,6 +122,24 @@ const english = {
     observations: "Observations",
     auditTrail: "Audit Trail",
   },
+  workOrderEmergency:{
+
+    what:"What happened?*",
+    where:"Where it happened?*",
+    who:"Who discover it?*",
+    when:"When it happened?*",
+    why:"Why it happened?*",
+    how:"How it happened?*",
+    howmuch:"How much it cost?*",
+    descriptionPlaceholderWhat:"What is happening?",
+    descriptionPlaceholderWhere:"Where exactly is the issue located?",
+    descriptionPlaceholderWho:"Who is affected, who reported it, and who needs to respond?",
+    descriptionPlaceholderWhen:" When did this start, and when was it reported?",
+    descriptionPlaceholderWhy:"Why does this require immediate, after-hours intervention?",
+    descriptionPlaceholderHow:"How are we containing the emergency right now, and how will it be repaired?",
+    descriptionPlaceholderHowmany:"How much damage has occurred, and how much will the emergency fix cost?",
+    
+  },
   audit: {
     empty: "No audit events have been recorded.",
     user: "User",
@@ -214,6 +232,8 @@ const english = {
   },
 
 };
+
+{/*Translations in Spanish*/}
 
 const spanishMexico = {
   common: {

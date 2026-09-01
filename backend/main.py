@@ -15,7 +15,6 @@ from schemas import (BuildingAccountCreate, BuildingAccountRead,
                     WorkCompletionCreate,WorkCompletionRead,
                     WorkEmergencyCreate, WorkEmergencyRead)
 
-
 app = FastAPI(title="COMS API")
 
 @app.get("/")
@@ -48,7 +47,7 @@ def create_building_account(
 ):
     record = BuildingAccount(
         account_id=building_account.account_id,
-        database_id=building_account.database_id,
+        #database_id=building_account.database_id,
         account_name=building_account.account_name,
         building_name=building_account.building_name,
         building_address=building_account.building_address,
@@ -89,7 +88,6 @@ def to_user_read(record: User) ->UserRead:
     return UserRead(
         database_id=record.database_id,
         account_id=record.account_id,
-        #account_database_id=record.account_database_id,
         user_name=record.user_name,
         email=record.email,
         first_name=record.first_name,
@@ -135,6 +133,7 @@ def create_user(
         user_role=user.user_role,
         status=user.status,
     )
+
     database.add(record)
     database.commit()
     database.refresh(record)
@@ -146,7 +145,7 @@ def create_user(
         response_model=list[UserRead],
 )
 
-def read_user(
+def read_user( 
     database: Session = Depends(get_db)
 ):
     statement =select(User).order_by(
@@ -161,11 +160,15 @@ def read_user(
     ]
 
 #######################################
+#Work order
 #######################################
 
 def to_work_order_read(record: WorkOrder) -> WorkOrderRead:
     return WorkOrderRead(
-        id=record.work_order_number,
+        database_id=record.database_id,
+        account_id=record.account_id,
+        work_order_number=record.work_order_number,
+        #
         status=record.status,
         title=record.title,
         supplier=record.supplier,
@@ -188,8 +191,21 @@ def create_work_order(
     work_order: WorkOrderCreate,
     database: Session = Depends(get_db),
 ):
+    statement = select(BuildingAccount).where(
+        BuildingAccount.account_id == work_order.account_id
+    )
+
+    building_account= database.scalar(statement)
+
+    if building_account is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Building account not found"
+        )
+    
     record = WorkOrder(
 
+        account_id=building_account.account_id,
         status="Draft",
         created_year=datetime.now().year,
         title=work_order.title,
@@ -234,12 +250,15 @@ def read_work_orders(
         to_work_order_read(record)
         for record in records
     ]
+
 #######################################
+#Supplier
 #######################################
 def to_supplier_read(record: Supplier) -> SupplierRead:
-
     return SupplierRead(
-
+        database_id=record.database_id,
+        account_id=record.account_id,
+        #
         supplier_id=record.supplier_id,
         supplier_type=record.supplier_type,
         supplier_name=record.supplier_name,
@@ -247,11 +266,11 @@ def to_supplier_read(record: Supplier) -> SupplierRead:
         contact=record.contact,
         phone=record.phone,
         email=record.email,
-        RFC=record.RFC,
+        rfc=record.rfc,
         address=record.address,
         clabe=record.clabe,
         payment_method=record.payment_method,
-        Notes=record.Notes,
+        notes=record.notes,
         created_at=record.created_at,
     )
 
@@ -265,24 +284,37 @@ def create_supplier(
     supplier: SupplierCreate,
     database:  Session =Depends(get_db),
 ):
+    statement = select(BuildingAccount).where(
+        BuildingAccount.account_id == supplier.account_id
+    )
+    building_account = database.scalar(statement)
+
+    if building_account is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Building account not found"
+        )
+    
     record = Supplier(
 
+    account_id =building_account.account_id,
+    #    
     supplier_type=supplier.supplier_type,
     supplier_name=supplier.supplier_name,
     service_category=supplier.service_category,
     contact=supplier.contact,
     phone=supplier.phone,
     email=supplier.email,
-    RFC=supplier.RFC,
+    rfc=supplier.rfc,
     address=supplier.address,
     clabe=supplier.clabe,
     payment_method=supplier.payment_method,
-    Notes=supplier.Notes,
+    notes=supplier.notes,
 )
+
 
     database.add(record)
     database.flush()
-
     record.supplier_id =(
         f"SUP-{datetime.now().year}-"
         f"{record.database_id:04d}"
@@ -312,13 +344,14 @@ def read_supplier (
     ]
 
 #######################################
+#Work order emergency
 #######################################
 
 def to_work_emergency_read(record: EmergencyWorkOrder) -> WorkEmergencyRead:
 
     return WorkEmergencyRead(
 
-        id=record.database_id,
+        database_id=record.database_id,
         work_order_id=record.work_order_id,
         created_at=record.created_at,
         wo_emergency_what=record.wo_emergency_what,
@@ -331,19 +364,30 @@ def to_work_emergency_read(record: EmergencyWorkOrder) -> WorkEmergencyRead:
     )
 
 @app.post(
-    "/api/work-orders/{work_order_id}/WO-emergency",
+    "/api/work-orders/{work_order_number}/WO-emergency",
     response_model= WorkEmergencyRead,
     status_code= 201
     )
 
 def create_work_emergency(
-    work_order_id:int,
+    work_order_number:str,
     emergency: WorkEmergencyCreate,
     database: Session = Depends(get_db)
-    ):
+):
+
+    work_order = database.scalar(
+        select(WorkOrder).where(
+            WorkOrder.work_order_number == work_order_number
+        )
+    )
+    if work_order is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Work order not found",
+        )
 
     record = EmergencyWorkOrder(
-        work_order_id=work_order_id,
+        work_order_id=work_order.database_id,
         wo_emergency_what=emergency.wo_emergency_what,
         wo_emergency_where=emergency.wo_emergency_where,
         wo_emergency_when=emergency.wo_emergency_when,
@@ -365,7 +409,7 @@ def create_work_emergency(
     )
 
 def read_work_emergency(
-    work_order_id:int,
+    work_order_id:str,
     database: Session =Depends(get_db),
 ):
     statement = (select (EmergencyWorkOrder)
@@ -380,12 +424,13 @@ def read_work_emergency(
     ]
 
 #######################################
+#Work order completion
 #######################################
 
 def to_work_order_completion_read (record: WorkCompletion) -> WorkCompletionRead:
 
     return WorkCompletionRead(
-        id= record.database_id,
+        database_id=record.database_id,
         work_order_id=record.work_order_id,
         created_at=record.created_at,
         work_performed_date=record.work_performed_date,
@@ -394,19 +439,30 @@ def to_work_order_completion_read (record: WorkCompletion) -> WorkCompletionRead
     )
 
 @app.post(
-        "/api/work-orders/{work_order_id}/WO-completion",
+        "/api/work-orders/{work_order_number}/WO-completion",
         response_model= WorkCompletionRead,
-        status_code= 201
+        status_code= 201,
 )
 
 def create_work_completion (
-    work_order_id:int,
+    work_order_number:str,
     completion: WorkCompletionCreate,
-    database: Session = Depends (get_db)
-    ): 
+    database: Session = Depends (get_db),
+): 
+    work_order = database.scalar(
+        select(WorkOrder).where(
+            WorkOrder.work_order_number == work_order_number
+        )
+    )
+    if work_order is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Work order not found",
+        )
+
 
     record = WorkCompletion(
-        work_order_id=work_order_id,
+        work_order_id=work_order.work_order_id,
         work_performed_date= completion.work_performed_date,
         work_performed_description=completion.work_performed_description,
         work_performed_observation=completion.work_performed_observation,
@@ -419,12 +475,12 @@ def create_work_completion (
     return to_work_order_completion_read (record)
 
 @app.get(
-    "/api/work-orders/{work_order_id}/WO-completion",
+    "/api/work-orders/{work_order_number}/WO-completion",
     response_model= list[WorkCompletionRead]
     )
 
 def read_work_completion(
-    work_order_id:int,
+    work_order_id:str,
     database: Session = Depends(get_db),
 ):
     statement = (select(WorkCompletion)

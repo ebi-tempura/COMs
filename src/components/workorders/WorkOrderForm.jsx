@@ -58,7 +58,7 @@ function WorkOrderForm({ onCreateWorkOrder, workOrders,onCancel }) {
       requestedBy: formData.requestedBy,
       amount: Number(formData.amount),
       status: WORK_ORDER_STATUS.DRAFT,
-      completitionReportStatus: WORK_ORDER_COMPLETION_REPORT_STATUS.NOT_STARTED,
+      completionReportStatus: WORK_ORDER_COMPLETION_REPORT_STATUS.NOT_STARTED,
       completionReportVersions: [],
       completionReport:null,
       priority: formData.priority,
