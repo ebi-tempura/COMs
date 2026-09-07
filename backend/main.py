@@ -1,6 +1,10 @@
 from datetime import datetime
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
+from auth import get_supabase_user
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -17,9 +21,53 @@ from schemas import (BuildingAccountCreate, BuildingAccountRead,
 
 app = FastAPI(title="COMS API")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 @app.get("/")
 def read_root():
     return {"message": "COMS API is running"}
+
+#######################################
+#Me
+#######################################
+
+@app.get("/api/me")
+def read_me(
+    supabase_user = Depends(get_supabase_user),
+    database: Session = Depends(get_db),
+):
+    statement = select(User).where(
+        User.auth_user_id == supabase_user.id
+    )
+
+    user = database.scalar(statement)
+
+    if user is None:
+        raise HTTPException(
+            status_code=404,
+            detail="COMS User not found"
+        )
+
+    return{
+        "auth_user_id": supabase_user.id,
+        "email": supabase_user.email,
+        "user_name": user.user_name,
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "user_role": user.user_role,
+        "status": user.status,
+    }
+    
 
 #######################################
 #Building Account
@@ -127,7 +175,9 @@ def create_user(
         account_id = building_account.account_id,
         user_name=user.user_name,
         email=user.email,
-        password_hash=user.password,
+        #
+        auth_user_id=user.auth_user_id,
+        #
         first_name=user.first_name,
         last_name=user.last_name,
         user_role=user.user_role,
@@ -238,18 +288,27 @@ def create_work_order(
 )
 
 def read_work_orders(
+    supabase_user = Depends(get_supabase_user),
     database: Session = Depends(get_db),
 ):
-    statement = select(WorkOrder).order_by(
-        WorkOrder.database_id
+    user_statement = select(User).where(
+        User.auth_user_id == supabase_user.id
     )
+    current_user = database.scalar(user_statement)
+
+    if current_user is None:
+        raise HTTPException(
+            status_code=404,
+            detail="COMS User not found"
+        )
+
+    statement = select(WorkOrder).where(
+        WorkOrder.account_id == current_user.account_id
+        )
 
     records = database.scalars(statement).all()
 
-    return [
-        to_work_order_read(record)
-        for record in records
-    ]
+    return records 
 
 #######################################
 #Supplier
@@ -331,17 +390,27 @@ def create_supplier(
 )
 
 def read_supplier (
+    supabase_user = Depends(get_supabase_user),
     database: Session = Depends(get_db),
 ):
-    statement = select (Supplier).order_by(
-        Supplier.database_id)
+    user_statement = select(User).where(
+        User.auth_user_id == supabase_user.id
+    )
+    current_user = database.scalar(user_statement)
+
+    if current_user is None:
+        raise HTTPException(
+            status_code=404,
+            detail="COMS User not found"
+        )
+
+    statement = select(Supplier).where(
+        Supplier.account_id == current_user.account_id
+    )   
 
     records = database.scalars(statement).all()
 
-    return[
-        to_supplier_read(record)
-        for record in records
-    ]
+    return records
 
 #######################################
 #Work order emergency
@@ -409,20 +478,42 @@ def create_work_emergency(
     )
 
 def read_work_emergency(
-    work_order_id:str,
+    work_order_id:int,
+    supabase_user = Depends(get_supabase_user),
     database: Session =Depends(get_db),
 ):
-    statement = (select (EmergencyWorkOrder)
-                 .where(
-        EmergencyWorkOrder.work_order_id == work_order_id).order_by(EmergencyWorkOrder.database_id)
-)
+    user_statement = select(User).where(
+        User.auth_user_id == supabase_user.id
+    )
+    current_user = database.scalar(user_statement)
+    if current_user is None:
+        raise HTTPException(
+            status_code=404,
+            detail="COMS User not found"
+        )
+
+    work_order_statement = select(WorkOrder).where(
+        WorkOrder.database_id == work_order_id,
+        WorkOrder.account_id == current_user.account_id
+    )
+    work_order = database.scalar(work_order_statement)
+    if work_order is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Work order not found",
+        )
+    statement = (select(EmergencyWorkOrder)
+                .where(
+                EmergencyWorkOrder.work_order_id == work_order_id)
+                .order_by(EmergencyWorkOrder.database_id) 
+            )
+
     records = database.scalars(statement).all()
 
     return[
-        to_work_emergency_read(record)
+        to_work_emergency_read (record)
         for record in records
     ]
-
 #######################################
 #Work order completion
 #######################################
@@ -480,14 +571,34 @@ def create_work_completion (
     )
 
 def read_work_completion(
-    work_order_id:str,
+    work_order_id:int,
+    supabase_user = Depends(get_supabase_user),
     database: Session = Depends(get_db),
 ):
+    user_statement = select(User).where(
+        User.auth_user_id == supabase_user.id
+    )
+    current_user = database.scalar(user_statement)
+    if current_user is None:
+        raise HTTPException(
+            status_code=404,
+            detail="COMS User not found"
+        )
+    work_order_statement = select(WorkOrder).where(
+        WorkOrder.database_id == work_order_id,
+        WorkOrder.account_id == current_user.account_id
+    )
+    work_order = database.scalar(work_order_statement)
+    if work_order is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Work order not found",
+        )
     statement = (select(WorkCompletion)
-                .where(                    
-                WorkCompletion.work_order_id == work_order_id).order_by(WorkCompletion.database_id)
-
-)
+                .where(
+                    WorkCompletion.work_order_id == work_order.work_order_id)
+                .order_by(WorkCompletion.database_id)
+                )
     records = database.scalars(statement).all()
 
     return[

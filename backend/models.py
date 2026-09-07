@@ -40,7 +40,9 @@ class User (Base):
 
     user_name: Mapped[str] = mapped_column(String(50),nullable=False)
     email: Mapped[str] = mapped_column(String(50),nullable=False)
-    password_hash: Mapped[str] = mapped_column(String(250),nullable=False)
+    #
+    auth_user_id: Mapped[str] = mapped_column(String(100),unique=True,index=True,nullable=False)
+    #
     first_name: Mapped[str] = mapped_column(String(50),nullable=False)
     last_name: Mapped[str] = mapped_column(String(50),nullable=False)
     user_role: Mapped[str] = mapped_column(String(50),nullable=False)
