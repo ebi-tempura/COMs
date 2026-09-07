@@ -210,6 +210,37 @@ def read_user(
     ]
 
 #######################################
+#Get current user  
+#######################################
+
+
+def get_current_user(request_user = Depends(get_supabase_user),
+                      database: Session = Depends(get_db)) -> User:
+    statement = select(User).where(
+        User.auth_user_id == request_user.id
+    )
+    current_user = database.scalar(statement)
+
+    if current_user is None:
+        raise HTTPException(
+            status_code=404,
+            detail="COMS User not found"
+        )
+
+    return current_user
+
+def require_roles(*allowed_roles: str):
+    def role_checker(
+            current_user: User = Depends(get_current_user)):
+
+        if current_user.user_role not in allowed_roles:
+            raise HTTPException(
+                status_code=403,
+                detail="User does not have the required role"
+            )
+        return current_user
+    return role_checker
+#######################################
 #Work order
 #######################################
 
@@ -255,6 +286,7 @@ def create_work_order(
     
     record = WorkOrder(
 
+        
         account_id=building_account.account_id,
         status="Draft",
         created_year=datetime.now().year,
@@ -441,12 +473,22 @@ def to_work_emergency_read(record: EmergencyWorkOrder) -> WorkEmergencyRead:
 def create_work_emergency(
     work_order_number:str,
     emergency: WorkEmergencyCreate,
+    supabase_user = Depends(get_supabase_user),
     database: Session = Depends(get_db)
 ):
+    current_user = database.scalar(select(User).where(
+        User.auth_user_id == supabase_user.id
+    ))
+    if current_user is None:
+        raise HTTPException(
+            status_code=404,
+            detail="COMS User not found"
+        )
 
     work_order = database.scalar(
         select(WorkOrder).where(
-            WorkOrder.work_order_number == work_order_number
+            WorkOrder.work_order_number == work_order_number,
+            WorkOrder.account_id == current_user.account_id
         )
     )
     if work_order is None:
@@ -473,12 +515,12 @@ def create_work_emergency(
     return to_work_emergency_read (record)
 
 @app.get(
-    "/api/work-orders/{work_order_id}/WO-emergency",
+    "/api/work-orders/{work_order_number}/WO-emergency",
     response_model= list[WorkEmergencyRead]
     )
 
 def read_work_emergency(
-    work_order_id:int,
+    work_order_id:str,
     supabase_user = Depends(get_supabase_user),
     database: Session =Depends(get_db),
 ):
@@ -492,11 +534,24 @@ def read_work_emergency(
             detail="COMS User not found"
         )
 
+    print("\n--- EMERGENCY WO SECURITY TEST ---")
+    print("Authenticated user:", current_user.email)
+    print("User account:", current_user.account_id)
+    print("Requested work_order_id:", work_order_id)
+
     work_order_statement = select(WorkOrder).where(
         WorkOrder.database_id == work_order_id,
         WorkOrder.account_id == current_user.account_id
     )
     work_order = database.scalar(work_order_statement)
+
+    print("ACCESS DENIED: Work order does not belong to this account")
+    print("----------------------------------\n")
+    
+    print("Work order account:", work_order.account_id)
+    print("ACCESS GRANTED")
+
+    
     if work_order is None:
         raise HTTPException(
             status_code=404,
@@ -510,10 +565,12 @@ def read_work_emergency(
 
     records = database.scalars(statement).all()
 
+
     return[
         to_work_emergency_read (record)
         for record in records
     ]
+
 #######################################
 #Work order completion
 #######################################
@@ -538,11 +595,22 @@ def to_work_order_completion_read (record: WorkCompletion) -> WorkCompletionRead
 def create_work_completion (
     work_order_number:str,
     completion: WorkCompletionCreate,
+    suprabase_user = Depends(get_supabase_user),
     database: Session = Depends (get_db),
 ): 
+    current_user = database.scalar(select(User).where(
+        User.auth_user_id == suprabase_user.id
+    ))
+    if current_user is None:
+        raise HTTPException(
+            status_code=404,
+            detail="COMS User not found"
+        )
+
     work_order = database.scalar(
         select(WorkOrder).where(
-            WorkOrder.work_order_number == work_order_number
+            WorkOrder.work_order_number == work_order_number,
+            WorkOrder.account_id == current_user.account_id,
         )
     )
     if work_order is None:
@@ -551,9 +619,8 @@ def create_work_completion (
             detail="Work order not found",
         )
 
-
     record = WorkCompletion(
-        work_order_id=work_order.work_order_id,
+        work_order_id=work_order.database_id,
         work_performed_date= completion.work_performed_date,
         work_performed_description=completion.work_performed_description,
         work_performed_observation=completion.work_performed_observation,
@@ -567,44 +634,51 @@ def create_work_completion (
 
 @app.get(
     "/api/work-orders/{work_order_number}/WO-completion",
-    response_model= list[WorkCompletionRead]
+    response_model=list[WorkCompletionRead]
+)
+def read_work_completion(
+    work_order_number: str,
+    supabase_user=Depends(get_supabase_user),
+    database: Session=Depends(get_db),
+):
+    current_user = database.scalar(
+        select(User).where(
+            User.auth_user_id == supabase_user.id
+        )
     )
 
-def read_work_completion(
-    work_order_id:int,
-    supabase_user = Depends(get_supabase_user),
-    database: Session = Depends(get_db),
-):
-    user_statement = select(User).where(
-        User.auth_user_id == supabase_user.id
-    )
-    current_user = database.scalar(user_statement)
     if current_user is None:
         raise HTTPException(
             status_code=404,
             detail="COMS User not found"
         )
-    work_order_statement = select(WorkOrder).where(
-        WorkOrder.database_id == work_order_id,
-        WorkOrder.account_id == current_user.account_id
+
+    work_order = database.scalar(
+        select(WorkOrder).where(
+            WorkOrder.work_order_number == work_order_number,
+            WorkOrder.account_id == current_user.account_id
+        )
     )
-    work_order = database.scalar(work_order_statement)
+
     if work_order is None:
         raise HTTPException(
             status_code=404,
             detail="Work order not found",
         )
-    statement = (select(WorkCompletion)
-                .where(
-                    WorkCompletion.work_order_id == work_order.work_order_id)
-                .order_by(WorkCompletion.database_id)
-                )
+
+    statement = (
+        select(WorkCompletion)
+        .where(
+            WorkCompletion.work_order_id == work_order.database_id
+        )
+        .order_by(WorkCompletion.database_id)
+    )
+
     records = database.scalars(statement).all()
 
-    return[
-        to_work_order_completion_read (record)
+    return [
+        to_work_order_completion_read(record)
         for record in records
     ]
-
 #######################################
 #######################################
