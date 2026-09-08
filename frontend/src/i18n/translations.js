@@ -43,6 +43,7 @@ const english = {
     rememberMe: "Remember me",
     forgotPassword: "Forgot password?",
     signIn: "Sign In",
+    signUp: "Sign Up"
   },
   roleSwitcher: { testingAs: "Testing as" },
   placeholders: {
@@ -230,6 +231,10 @@ const english = {
     step: "Step",
     noObservations: "None",
   },
+  register: {
+  buildingName: "Building name",
+  buildingNamePlaceholder: "e.g. Tower A",
+}
 
 };
 

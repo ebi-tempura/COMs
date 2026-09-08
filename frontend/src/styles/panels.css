@@ -48,3 +48,23 @@
     font-size: 18px;
     color: #0f172a;
   }
+  .register-step {
+  animation: step-enter 280ms ease-out;
+}
+
+@keyframes step-enter {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.register-actions {
+  display: flex;
+  gap: 12px;
+}

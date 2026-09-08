@@ -73,3 +73,43 @@ textarea {
   align-items: center;
   gap: 6px;
 }
+
+.register-step {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  animation: step-enter 280ms ease-out;
+}
+
+.register-step label {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+register-step input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  padding: 12px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 16px;
+}
+
+
+@keyframes step-enter {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

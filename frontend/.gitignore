@@ -35,3 +35,5 @@ backend/*.db-journal
 
 .env.local
 .env
+
+.DS_Store

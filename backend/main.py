@@ -213,7 +213,6 @@ def read_user(
 #Get current user  
 #######################################
 
-
 def get_current_user(request_user = Depends(get_supabase_user),
                       database: Session = Depends(get_db)) -> User:
     statement = select(User).where(
@@ -286,7 +285,7 @@ def create_work_order(
     
     record = WorkOrder(
 
-        
+
         account_id=building_account.account_id,
         status="Draft",
         created_year=datetime.now().year,

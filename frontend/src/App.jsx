@@ -9,8 +9,9 @@ import Login from "./pages/Login/Login";
 import AppLayout from "./layouts/AppLayout";
 import WorkOrders from "./pages/WorkOrders/WorkOrders";
 import Suppliers from "./pages/Suppliers/Suppliers";
-import LanguageSwitcher from "./components/common/LanguageSwitcher";
+import Register from "./pages/Register/Register";
 import RoleSwitcher from "./components/security/RoleSwitcher";
+import LanguageSwitcher from "./components/common/LanguageSwitcher";
 import { useLanguage } from "./i18n/LanguageContext";
 
 function PlaceholderPage({ translationKey }) {
@@ -20,22 +21,25 @@ function PlaceholderPage({ translationKey }) {
 
 function App() {
   const [userEmail, setUserEmail] = useState("");
+  const [name ,setName] = useState("");
 
   return (
     <>
 
       <div className="development-toolbar">
-        <RoleSwitcher />
         <LanguageSwitcher />
+        <RoleSwitcher />
       </div>
 
       <Routes>
+        <Route path="/register" element={<Register setUserEmail={setUserEmail} setName={setName} />} />
+        
         <Route path="/login" element={<Login setUserEmail={setUserEmail} />} />
 
         <Route element={<AppLayout />}>
           <Route path="/" element={<Navigate to="/work-orders" replace />} />
           <Route
-            path="/Dashbord"
+            path="/Dashboard"
             element={<PlaceholderPage translationKey="placeholders.dashboard" />}
           />
           <Route

@@ -105,6 +105,13 @@ console.log("WORK ORDERS:", workOrders);
           <button className="button" type="submit">
             {t("login.signIn")}
           </button>
+
+          <button className="button.secondarybutton" onClick={() => navigate("/register")}>
+            {t("login.signUp")}
+          </button>
+
+
+
         </form>
       </section>
     </main>
