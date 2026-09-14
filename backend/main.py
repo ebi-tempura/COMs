@@ -11,8 +11,8 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import (BuildingAccount, User,
                     WorkOrder, Supplier,
-                    EmergencyWorkOrder, WorkCompletion)
-from schemas import (BuildingAccountCreate, BuildingAccountRead,
+                    EmergencyWorkOrder, WorkCompletion, AuditLog)
+from schemas import (AuditLogCreate, AuditLogRead, BuildingAccountCreate, BuildingAccountRead,
                     UserCreate, UserRead,
                     WorkOrderCreate, WorkOrderRead,
                     SupplierCreate, SupplierRead,
@@ -68,6 +68,42 @@ def read_me(
         "status": user.status,
     }
     
+#######################################
+#Get current user  
+#######################################
+
+def get_current_user(request_user = Depends(get_supabase_user),
+                      database: Session = Depends(get_db)) -> User:
+    statement = select(User).where(
+        User.auth_user_id == request_user.id
+    )
+    current_user = database.scalar(statement)
+
+    if current_user.status != "Active":
+        raise HTTPException(
+            status_code=403,
+            detail="COMS User is not active"
+        )
+
+    if current_user.status is None:
+        raise HTTPException(
+            status_code=403,
+            detail="COMS User not found"
+        )
+
+    return current_user
+
+def require_roles(*allowed_roles: str):
+    def role_checker(
+            current_user: User = Depends(get_current_user)):
+
+        if current_user.user_role not in allowed_roles:
+            raise HTTPException(
+                status_code=403,
+                detail="User does not have the required role"
+            )
+        return current_user
+    return role_checker
 
 #######################################
 #Building Account
@@ -95,12 +131,10 @@ def create_building_account(
 ):
     record = BuildingAccount(
         account_id=building_account.account_id,
-        #database_id=building_account.database_id,
         account_name=building_account.account_name,
         building_name=building_account.building_name,
         building_address=building_account.building_address,
         account_status=building_account.account_status,
-        #created_at=building_account.created_at,  
     )
 
     database.add(record)
@@ -155,6 +189,7 @@ def to_user_read(record: User) ->UserRead:
 
 def create_user(
     user : UserCreate,
+    current_user: User = Depends(require_roles("Admin")),
     database: Session = Depends(get_db),
 ):
     statement = select (BuildingAccount).where(
@@ -172,7 +207,7 @@ def create_user(
     
     record = User(
    #    account_database_id=building_account.account_database_id,
-        account_id = building_account.account_id,
+        account_id = current_user.account_id,
         user_name=user.user_name,
         email=user.email,
         #
@@ -196,11 +231,14 @@ def create_user(
 )
 
 def read_user( 
-    database: Session = Depends(get_db)
+    current_user: User = Depends(require_roles("Admin")),
+    database: Session = Depends(get_db),
+
 ):
-    statement =select(User).order_by(
-        User.database_id
-    )
+    statement = ( select(User)
+    .where(User.account_id == current_user.account_id)
+    .order_by(User.database_id)
+     )
 
     records =database.scalars(statement).all()
 
@@ -210,36 +248,6 @@ def read_user(
     ]
 
 #######################################
-#Get current user  
-#######################################
-
-def get_current_user(request_user = Depends(get_supabase_user),
-                      database: Session = Depends(get_db)) -> User:
-    statement = select(User).where(
-        User.auth_user_id == request_user.id
-    )
-    current_user = database.scalar(statement)
-
-    if current_user is None:
-        raise HTTPException(
-            status_code=404,
-            detail="COMS User not found"
-        )
-
-    return current_user
-
-def require_roles(*allowed_roles: str):
-    def role_checker(
-            current_user: User = Depends(get_current_user)):
-
-        if current_user.user_role not in allowed_roles:
-            raise HTTPException(
-                status_code=403,
-                detail="User does not have the required role"
-            )
-        return current_user
-    return role_checker
-#######################################
 #Work order
 #######################################
 
@@ -247,6 +255,7 @@ def to_work_order_read(record: WorkOrder) -> WorkOrderRead:
     return WorkOrderRead(
         database_id=record.database_id,
         account_id=record.account_id,
+        created_by_user_id=record.created_by_user_id,
         work_order_number=record.work_order_number,
         #
         status=record.status,
@@ -269,24 +278,13 @@ def to_work_order_read(record: WorkOrder) -> WorkOrderRead:
 
 def create_work_order(
     work_order: WorkOrderCreate,
+    current_user: User = Depends(require_roles("Admin", "Manager", "Staff")),
     database: Session = Depends(get_db),
 ):
-    statement = select(BuildingAccount).where(
-        BuildingAccount.account_id == work_order.account_id
-    )
 
-    building_account= database.scalar(statement)
-
-    if building_account is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Building account not found"
-        )
-    
     record = WorkOrder(
 
-
-        account_id=building_account.account_id,
+        account_id=current_user.account_id,
         status="Draft",
         created_year=datetime.now().year,
         title=work_order.title,
@@ -298,6 +296,7 @@ def create_work_order(
         location=work_order.location,
         description=work_order.description,
         target_date=work_order.target_date,
+        created_by_user_id=current_user.database_id,
     )
 
     database.add(record)
@@ -313,20 +312,331 @@ def create_work_order(
 
     return to_work_order_read(record)
 
+@app.post(
+    "/api/work-orders/{work_order_number}/submit",
+    response_model= WorkOrderRead,
+)
+
+def submit_work_order(
+    work_order_number:str,
+    current_user: User =Depends(require_roles("Staff","Manager")),
+    database:Session=Depends(get_db),
+):
+    work_order = database.scalar(
+        select(WorkOrder).where(
+            WorkOrder.work_order_number == work_order_number,
+            WorkOrder.account_id == current_user.account_id,
+        )
+    )
+
+    if work_order is None:
+        raise HTTPException(
+            status_code= 404,
+            detail= "Work order not found"
+        )
+
+    if work_order.status != "Draft":
+        raise HTTPException(
+            status_code= 409,
+            detail="Only Draft orders can be submitted"
+        )
+
+    if work_order.created_by_user_id != current_user.database_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Only Work Order creator can submit it",
+        )
+
+    work_order.status = "Pending President Approval"
+
+    database.commit()
+    database.refresh(work_order)
+
+    return to_work_order_read(work_order)
+
+### Approve Work Order ###
+
+@app.post(
+    "/api/work-orders/{work_order_number}/approve-president",
+    response_model=WorkOrderRead,
+)
+
+def approve_work_order_by_president(
+    work_order_number: str,
+    current_user: User = Depends(require_roles("President")),
+    database: Session = Depends (get_db),
+):
+    work_order = database.scalar(
+        select(WorkOrder).where(
+            WorkOrder.work_order_number == work_order_number,
+            WorkOrder.account_id == current_user.account_id,
+        )
+    )
+
+    if work_order is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Work order not found",
+        )
+
+    if work_order.status != "Pending President Approval":
+        raise HTTPException(
+            status_code=409,
+            detail="Work order is not pending president approval",
+        )
+
+    if work_order.created_by_user_id == current_user.database_id:
+        raise HTTPException(
+            status_code=403,
+            detail="The Work Order creator cannot approve it"
+        )
+
+    work_order.status = "Pending Treasurer Approval"
+
+    database.commit()
+    database.refresh(work_order)
+
+    return to_work_order_read(work_order)
+
+@app.post(
+    "/api/work-orders/{work_order_number}/approve-treasurer",
+    response_model=WorkOrderRead,
+)
+
+def approve_work_order_by_treasurer(
+    work_order_number: str,
+    current_user: User = Depends(require_roles("Treasurer")),
+    database: Session = Depends (get_db),
+):
+    work_order = database.scalar(
+        select(WorkOrder).where(
+            WorkOrder.work_order_number == work_order_number,
+            WorkOrder.account_id == current_user.account_id,
+        )
+    )
+
+    if work_order is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Work order not found",
+        )
+
+    if work_order.status != "Pending Treasurer Approval":
+        raise HTTPException(
+            status_code=409,
+            detail="Work order is not pending treasurer approval",
+        )
+
+    if work_order.created_by_user_id == current_user.database_id:
+        raise HTTPException(
+            status_code=403,
+            detail="The Work Order creator cannot approve it",
+        )
+
+    needs_board_approval =(
+        work_order.type == "Emergency"
+        or work_order.priority == "High"
+    )
+
+    if needs_board_approval:
+        work_order.status = "Pending Board Member Approval"
+    else:
+        work_order.status = "Approved"
+
+    database.commit()
+    database.refresh(work_order)
+
+    return to_work_order_read(work_order)
+
+@app.post(
+    "/api/work-orders/{work_order_number}/approve-board_member",
+    response_model=WorkOrderRead,
+)
+
+def approve_work_order_by_board_member(
+    work_order_number: str,
+    current_user: User = Depends(require_roles("Board Member")),
+    database: Session = Depends (get_db),
+):
+    work_order = database.scalar(
+        select(WorkOrder).where(
+            WorkOrder.work_order_number == work_order_number,
+            WorkOrder.account_id == current_user.account_id,
+        )
+    )
+
+    if work_order is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Work order not found",
+        )
+
+    if work_order.status != "Pending Board Member Approval":
+        raise HTTPException(
+            status_code=409,
+            detail="Work order is not pending board member approval",
+        )
+
+    if work_order.created_by_user_id == current_user.database_id:
+        raise HTTPException(
+            status_code=403,
+            detail="The Work Order creator cannot approve it"
+        )
+
+    work_order.status = "Approved"
+
+    database.commit()
+    database.refresh(work_order)
+
+    return to_work_order_read(work_order)
+
+### Reject Work Order ###
+
+@app.post(
+    "/api/work-orders/{work_order_number}/reject-president",
+    response_model=WorkOrderRead,
+)
+
+def reject_work_order_by_president(
+    work_order_number: str,
+    current_user: User = Depends(require_roles("President")),
+    database: Session = Depends (get_db),
+):
+    work_order = database.scalar(
+        select(WorkOrder).where(
+            WorkOrder.work_order_number == work_order_number,
+            WorkOrder.account_id == current_user.account_id,
+        )
+    )
+
+    if work_order is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Work order not found",
+        )
+
+    if work_order.status != "Pending President Approval":
+        raise HTTPException(
+            status_code=409,
+            detail="Work order is not pending president approval",
+        )
+
+    if work_order.created_by_user_id == current_user.database_id:
+        raise HTTPException(
+            status_code=403,
+            detail="The Work Order creator cannot reject it"
+        )
+
+    work_order.status = "Rejected by President"
+
+    database.commit()
+    database.refresh(work_order)
+
+    return to_work_order_read(work_order)
+
+@app.post(
+    "/api/work-orders/{work_order_number}/reject-treasurer",
+    response_model=WorkOrderRead,
+)
+
+def reject_work_order_by_treasurer(
+    work_order_number: str,
+    current_user: User = Depends(require_roles("Treasurer")),
+    database: Session = Depends (get_db),
+):
+    work_order = database.scalar(
+        select(WorkOrder).where(
+            WorkOrder.work_order_number == work_order_number,
+            WorkOrder.account_id == current_user.account_id,
+        )
+    )
+
+    if work_order is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Work order not found",
+        )
+
+    if work_order.status != "Pending Treasurer Approval":
+        raise HTTPException(
+            status_code=409,
+            detail="Work order is not pending treasurer approval",
+        )
+
+    if work_order.created_by_user_id == current_user.database_id:
+        raise HTTPException(
+            status_code=403,
+            detail="The Work Order creator cannot approve it"
+        )
+
+    needs_board_approval =(
+        work_order.type == "Emergency"
+        or work_order.priority == "High"
+    )
+
+    if needs_board_approval:
+        work_order.status = "Pending Board Member Approval"
+    else:
+        work_order.status = "Rejected by treasurer"
+
+    database.commit()
+    database.refresh(work_order)
+
+    return to_work_order_read(work_order)
+
+@app.post(
+    "/api/work-orders/{work_order_number}/approve-board_member",
+    response_model=WorkOrderRead,
+)
+
+def reject_work_order_by_board_member(
+    work_order_number: str,
+    current_user: User = Depends(require_roles("Board Member")),
+    database: Session = Depends (get_db),
+):
+    work_order = database.scalar(
+        select(WorkOrder).where(
+            WorkOrder.work_order_number == work_order_number,
+            WorkOrder.account_id == current_user.account_id,
+        )
+    )
+
+    if work_order is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Work order not found",
+        )
+
+    if work_order.status != "Pending Board Member Approval":
+        raise HTTPException(
+            status_code=409,
+            detail="Work order is not pending board member approval",
+        )
+
+    if work_order.created_by_user_id == current_user.database_id:
+        raise HTTPException(
+            status_code=403,
+            detail="The Work Order creator cannot reject it"
+        )
+
+    work_order.status = "Rejected by board member"
+
+    database.commit()
+    database.refresh(work_order)
+
+    return to_work_order_read(work_order)
+
+### Read Work Order ###
+
 @app.get(
     "/api/work-orders",
     response_model=list[WorkOrderRead],
 )
 
 def read_work_orders(
-    supabase_user = Depends(get_supabase_user),
+    current_user: User = Depends(get_current_user),
     database: Session = Depends(get_db),
 ):
-    user_statement = select(User).where(
-        User.auth_user_id == supabase_user.id
-    )
-    current_user = database.scalar(user_statement)
-
     if current_user is None:
         raise HTTPException(
             status_code=404,
@@ -341,107 +651,6 @@ def read_work_orders(
 
     return records 
 
-#######################################
-#Supplier
-#######################################
-def to_supplier_read(record: Supplier) -> SupplierRead:
-    return SupplierRead(
-        database_id=record.database_id,
-        account_id=record.account_id,
-        #
-        supplier_id=record.supplier_id,
-        supplier_type=record.supplier_type,
-        supplier_name=record.supplier_name,
-        service_category=record.service_category,
-        contact=record.contact,
-        phone=record.phone,
-        email=record.email,
-        rfc=record.rfc,
-        address=record.address,
-        clabe=record.clabe,
-        payment_method=record.payment_method,
-        notes=record.notes,
-        created_at=record.created_at,
-    )
-
-@app.post(
-    "/api/suppliers",
-    response_model=SupplierRead,
-    status_code= 201,
-    )
-
-def create_supplier(
-    supplier: SupplierCreate,
-    database:  Session =Depends(get_db),
-):
-    statement = select(BuildingAccount).where(
-        BuildingAccount.account_id == supplier.account_id
-    )
-    building_account = database.scalar(statement)
-
-    if building_account is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Building account not found"
-        )
-    
-    record = Supplier(
-
-    account_id =building_account.account_id,
-    #    
-    supplier_type=supplier.supplier_type,
-    supplier_name=supplier.supplier_name,
-    service_category=supplier.service_category,
-    contact=supplier.contact,
-    phone=supplier.phone,
-    email=supplier.email,
-    rfc=supplier.rfc,
-    address=supplier.address,
-    clabe=supplier.clabe,
-    payment_method=supplier.payment_method,
-    notes=supplier.notes,
-)
-
-
-    database.add(record)
-    database.flush()
-    record.supplier_id =(
-        f"SUP-{datetime.now().year}-"
-        f"{record.database_id:04d}"
-    )
-
-    database.commit()
-    database.refresh(record)
-
-    return to_supplier_read(record)
-
-@app.get(
-    "/api/suppliers",
-    response_model=list[SupplierRead],
-)
-
-def read_supplier (
-    supabase_user = Depends(get_supabase_user),
-    database: Session = Depends(get_db),
-):
-    user_statement = select(User).where(
-        User.auth_user_id == supabase_user.id
-    )
-    current_user = database.scalar(user_statement)
-
-    if current_user is None:
-        raise HTTPException(
-            status_code=404,
-            detail="COMS User not found"
-        )
-
-    statement = select(Supplier).where(
-        Supplier.account_id == current_user.account_id
-    )   
-
-    records = database.scalars(statement).all()
-
-    return records
 
 #######################################
 #Work order emergency
@@ -472,18 +681,9 @@ def to_work_emergency_read(record: EmergencyWorkOrder) -> WorkEmergencyRead:
 def create_work_emergency(
     work_order_number:str,
     emergency: WorkEmergencyCreate,
-    supabase_user = Depends(get_supabase_user),
+    current_user: User = Depends(require_roles("Admin", "Manager", "Staff")),
     database: Session = Depends(get_db)
 ):
-    current_user = database.scalar(select(User).where(
-        User.auth_user_id == supabase_user.id
-    ))
-    if current_user is None:
-        raise HTTPException(
-            status_code=404,
-            detail="COMS User not found"
-        )
-
     work_order = database.scalar(
         select(WorkOrder).where(
             WorkOrder.work_order_number == work_order_number,
@@ -512,6 +712,8 @@ def create_work_emergency(
     database.refresh(record)
 
     return to_work_emergency_read (record)
+
+### Read work emergency ###
 
 @app.get(
     "/api/work-orders/{work_order_number}/WO-emergency",
@@ -594,18 +796,9 @@ def to_work_order_completion_read (record: WorkCompletion) -> WorkCompletionRead
 def create_work_completion (
     work_order_number:str,
     completion: WorkCompletionCreate,
-    suprabase_user = Depends(get_supabase_user),
+    current_user: User = Depends(require_roles("Admin", "Manager", "Staff")),
     database: Session = Depends (get_db),
 ): 
-    current_user = database.scalar(select(User).where(
-        User.auth_user_id == suprabase_user.id
-    ))
-    if current_user is None:
-        raise HTTPException(
-            status_code=404,
-            detail="COMS User not found"
-        )
-
     work_order = database.scalar(
         select(WorkOrder).where(
             WorkOrder.work_order_number == work_order_number,
@@ -635,6 +828,7 @@ def create_work_completion (
     "/api/work-orders/{work_order_number}/WO-completion",
     response_model=list[WorkCompletionRead]
 )
+
 def read_work_completion(
     work_order_number: str,
     supabase_user=Depends(get_supabase_user),
@@ -679,5 +873,407 @@ def read_work_completion(
         to_work_order_completion_read(record)
         for record in records
     ]
+
+
 #######################################
+#Supplier
 #######################################
+
+def to_supplier_read(record: Supplier) -> SupplierRead:
+    return SupplierRead(
+        database_id=record.database_id,
+        account_id=record.account_id,
+        #
+        supplier_id=record.supplier_id,
+        supplier_type=record.supplier_type,
+        supplier_name=record.supplier_name,
+        service_category=record.service_category,
+        contact=record.contact,
+        phone=record.phone,
+        email=record.email,
+        rfc=record.rfc,
+        address=record.address,
+        clabe=record.clabe,
+        payment_method=record.payment_method,
+        notes=record.notes,
+        created_at=record.created_at,
+    )
+
+@app.post(
+    "/api/suppliers",
+    response_model=SupplierRead,
+    status_code= 201,
+    )
+
+def create_supplier(
+    supplier: SupplierCreate,
+    current_user: User = Depends(require_roles("Admin", "Manager", "Staff")),
+    database:  Session =Depends(get_db),
+):
+    # statement = select(BuildingAccount).where(
+    #     BuildingAccount.account_id == supplier.account_id
+    # )
+    # building_account = database.scalar(statement)
+
+    # if building_account is None:
+        # raise HTTPException(
+        #     status_code=404,
+        #     detail="Building account not found"
+        # )
+    
+    record = Supplier(
+
+    account_id =current_user.account_id,
+    #    
+    supplier_type=supplier.supplier_type,
+    supplier_name=supplier.supplier_name,
+    service_category=supplier.service_category,
+    contact=supplier.contact,
+    phone=supplier.phone,
+    email=supplier.email,
+    rfc=supplier.rfc,
+    address=supplier.address,
+    clabe=supplier.clabe,
+    payment_method=supplier.payment_method,
+    notes=supplier.notes,
+)
+
+
+    database.add(record)
+    database.flush()
+
+    record.supplier_id =(
+        f"SUP-{datetime.now().year}-"
+        f"{record.database_id:04d}"
+    )
+
+    database.commit()
+    database.refresh(record)
+
+    return to_supplier_read(record)
+
+@app.get(
+    "/api/suppliers",
+    response_model=list[SupplierRead],
+)
+
+def read_supplier (
+    supabase_user = Depends(get_supabase_user),
+    database: Session = Depends(get_db),
+):
+    user_statement = select(User).where(
+        User.auth_user_id == supabase_user.id
+    )
+    current_user = database.scalar(user_statement)
+
+    if current_user is None:
+        raise HTTPException(
+            status_code=404,
+            detail="COMS User not found"
+        )
+
+    statement = select(Supplier).where(
+        Supplier.account_id == current_user.account_id
+    )   
+
+    records = database.scalars(statement).all()
+
+    return records
+
+#Supplier approve
+
+@app.post(
+    "/api/suppliers/{supplier_num}/approve-president",
+    response_model= SupplierRead,
+)
+
+def approve_supplier_by_president(
+    supplier_number: str,
+    current_user:User = Depends(require_roles("President")),
+    database: Session = Depends(get_db),
+):
+    supplier_record = database.scalar(
+        select(Supplier).where(
+            Supplier.supplier_number == supplier_number,
+            Supplier.account_id == current_user.account_id,
+        )
+    )
+
+    if Supplier is None:
+        raise HTTPException (
+        status_code= 404,
+        detail= "Supplier not found",
+    )
+
+    if Supplier.status != "Pending President Approval":
+        raise HTTPException (
+        status_code= 409,
+        detail= "Supplier is not pending for president approval",
+    )
+
+    if Supplier.created_by_user_id == current_user.database_id:
+        raise HTTPException (
+        status_code= 403,
+        detail= "Supplier creator cannot approve it",
+    )
+
+    database.commit()
+    database.refresh(Supplier)
+
+    return to_supplier_read(Supplier)
+
+@app.post(      
+    "/api/suppliers/{supplier_number}/approve-treasurer",
+    response_model= SupplierRead,
+)
+
+def approve_supplier_by_treasurer(
+    supplier_number: str,
+    current_user: User = Depends(require_roles("Treasurer")),
+    database: Session = Depends (get_db),
+):
+    supplier_record = database.scalar(
+        select(Supplier).where(
+            Supplier.supplier_number == supplier_number,
+            Supplier.account_id == current_user.account_id,
+        )
+    )   
+
+    if supplier_number is None:
+        raise HTTPException (
+            status_code= 404,
+            detail= "Supplier not found"
+        )
+    if Supplier.status != "Pending Treasurer Approval":
+        raise HTTPException (
+        status_code= 409,
+        detail= "Supplier is not pending for treasurer approval",
+    )
+
+    if Supplier.created_by_user_id == current_user.database_id:
+        raise HTTPException (
+        status_code= 403,
+        detail= "Supplier creator cannot approve it",
+    )
+
+    database.commit()
+    database.refresh(Supplier)
+
+    return to_supplier_read(Supplier)
+    
+@app.post(
+    "/api/supplier/{supplier_num}/approve-board_member",
+    response_model= SupplierRead,
+)
+
+def approve_supplier_by_board_member(
+    supplier_number: str,
+    current_user: User = Depends(require_roles("Board Member")),
+    database: Session = Depends (get_db),
+):
+    supplier_record = database.scalar(
+        select(Supplier).where(
+            Supplier.supplier_number == supplier_number,
+            Supplier.account_id == current_user.account_id,
+        )
+    )   
+
+    if supplier_number is None:
+        raise HTTPException (
+            status_code= 404,
+            detail= "Supplier not found"
+        )
+    if Supplier.status != "Pending Board Member Approval":
+        raise HTTPException (
+        status_code= 409,
+        detail= "Supplier is not pending for Board Member approval",
+    )
+
+    if Supplier.created_by_user_id == current_user.database_id:
+        raise HTTPException (
+        status_code= 403,
+        detail= "Supplier creator cannot approve it",
+    )
+
+    database.commit()
+    database.refresh(Supplier)
+
+    return to_supplier_read(Supplier)
+
+#Supplier reject
+
+@app.post(
+    "/api/suppliers/{supplier_number}/reject-president",
+    response_model= SupplierRead,
+)
+
+def reject_supplier_by_president(
+    supplier_number: str,
+    current_user: User = Depends(require_roles("President")),
+    database: Session = Depends(get_db),
+):
+    supplier_record = database.scalar(
+        select(Supplier).where(
+            Supplier.supplier_number == supplier_number,
+            Supplier.account_id == current_user.account_id,
+        )
+    )
+
+    if supplier_record is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Work order not found",
+        )
+
+    if supplier_record.status != "Pending President Approval":
+        raise HTTPException(
+            status_code=409,
+            detail="Supplier is not pending president approval",
+        )
+
+    if supplier_record.created_by_user_id == current_user.database_id:
+        raise HTTPException(
+            status_code=403,
+            detail="The supplier creator cannot reject it",
+        )
+
+    supplier_record.status = "Rejected by President"
+
+    database.commit()
+    database.refresh(supplier_record)
+
+    return to_supplier_read(supplier_record)
+
+@app.post(
+    "/api/suppliers/{supplier_number}/reject-treasurer",
+    response_model= SupplierRead,
+)
+
+def reject_supplier_by_treasurer(
+    supplier_number: str,
+    current_user: User = Depends(require_roles("Treasurer")),
+    database: Session = Depends(get_db),
+):
+    supplier_record = database.scalar(
+        select(Supplier).where(
+            Supplier.supplier_number == supplier_number,
+            Supplier.account_id == current_user.account_id,
+        )
+    )
+
+    if supplier_record is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Work order not found",
+        )
+
+    if supplier_record.status != "Pending Treasurer Approval":
+        raise HTTPException(
+            status_code=409,
+            detail="Supplier is not pending treasurer approval",
+        )
+
+    if supplier_record.created_by_user_id == current_user.database_id:
+        raise HTTPException(
+            status_code=403,
+            detail="The supplier creator cannot reject it",
+        )
+
+    supplier_record.status = "Rejected by Treasurer"
+
+    database.commit()
+    database.refresh(supplier_record)
+
+    return to_supplier_read(supplier_record)
+
+@app.post(
+    "/api/suppliers/{supplier_number}/reject-board-member",
+    response_model= SupplierRead,
+)
+
+def reject_supplier_by_board_member(
+    supplier_number: str,
+    current_user: User = Depends(require_roles("Board Member")),
+    database: Session = Depends(get_db),
+):
+    supplier_record = database.scalar(
+        select(Supplier).where(
+            Supplier.supplier_number == supplier_number,
+            Supplier.account_id == current_user.account_id,
+        )
+    )
+
+    if supplier_record is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Supplier not found",
+        )
+
+    if supplier_record.status != "Pending Board Member Approval":
+        raise HTTPException(
+            status_code=409,
+            detail="Supplier is not pending Board Member approval",
+        )
+
+    if supplier_record.created_by_user_id == current_user.database_id:
+        raise HTTPException(
+            status_code=403,
+            detail="The supplier creator cannot reject it",
+        )
+
+    supplier_record.status = "Rejected by Board Member"
+
+    database.commit()
+    database.refresh(supplier_record)
+
+    return to_supplier_read(supplier_record)
+
+#################################
+#Audit log
+#################################
+
+def to_audit_log_read(record:AuditLog) -> AuditLogRead:
+    return AuditLogRead(
+        database_id=record.database_id,
+        account_id=record.account_id,
+        user_id=record.user_id,
+        action=record.action,
+        table_name=record.table_name,
+        record_id=record.record_id,
+        details=record.details,
+        created_at=record.created_at,
+    )
+
+@app.get(
+    "/api/audit-logs",
+    response_model=list[AuditLogRead],
+)
+
+def read_audit_logs(
+    supabase_user=Depends(get_supabase_user),
+    database: Session=Depends(get_db),
+):
+    current_user = database.scalar(
+        select(User).where(
+            User.auth_user_id == supabase_user.id
+        )
+    )
+
+    if current_user is None:
+        raise HTTPException(
+            status_code=404,
+            detail="COMS User not found"
+        )
+
+    statement = (
+        select(AuditLog)
+        .where(AuditLog.account_id == current_user.account_id)
+        .order_by(AuditLog.created_at.desc())
+    )
+
+    records = database.scalars(statement).all()
+
+    return [
+        to_audit_log_read(record)
+        for record in records
+    ]

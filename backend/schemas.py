@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime,timezone
 from decimal import Decimal
 from typing import Literal
 
@@ -61,10 +61,10 @@ class UserRead (BaseModel):
 
 class WorkOrderCreate(BaseModel):
 
-    account_id: str = Field(min_length=1, max_length=50)
+    #account_id: str = Field(min_length=1, max_length=50)
     #
     title: str = Field(min_length =1, max_length = 200,)
-    supplier: str = Field(min_length =1, max_length = 200,)
+    supplier: str = Field(min_length =1, max_length = 200,)         
     amount: Decimal = Field(gt =0)
     priority: Literal ["Low","Medium","High"]
     type: Literal ["Normal", "Emergency"]
@@ -78,11 +78,22 @@ class WorkOrderRead (WorkOrderCreate):
     database_id: int
     account_id: str
     work_order_number:str
+    created_by_user_id:int | None = None
     #
     created_at: datetime = None
-    status: Literal ["Draft","Pending President Approval",
-    "Pending Treasurer Approval","Approved","Rejected",
-    "In Progress","Completed",]
+    status: Literal[
+    "Draft",
+    "Pending President Approval",
+    "Pending Treasurer Approval",
+    "Pending Board Member Approval",
+    "Approved",
+    "Rejected",
+    "Rejected by President",
+    "Rejected by Treasurer",
+    "Rejected by Board Member",
+    "In Progress",
+    "Completed",
+    ]
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -156,3 +167,23 @@ class WorkCompletionRead (WorkCompletionCreate):
 
 #######################################
 #######################################
+
+class AuditLogCreate (BaseModel):
+    account_id: str = Field (min_length=1, max_length=50)
+    user_id: str = Field (min_length=1, max_length=50)
+    action: str = Field (min_length=1, max_length=50)
+    table_name: str = Field (min_length=1, max_length=50)
+    record_id: str = Field (min_length=1, max_length=50)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class AuditLogRead (AuditLogCreate):
+    database_id: int
+    account_id: str
+    user_id: str
+    action: str
+    table_name: str
+    record_id: str
+    details: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

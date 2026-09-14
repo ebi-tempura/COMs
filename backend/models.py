@@ -29,6 +29,7 @@ class BuildingAccount(Base):
     #work_order_completions:Mapped [list ["WorkCompletion"]] = relationship(back_populates= "building_account")
     #emergency_work_orders:Mapped [list ["EmergencyWorkOrder"]] = relationship(back_populates= "building_account")
     suppliers:Mapped [list ["Supplier"]] = relationship(back_populates= "building_account")
+    audit_trails:Mapped [list ["AuditLog"]] = relationship(back_populates= "building_account")
 
 class User (Base):
     __tablename__= "User_table"
@@ -36,13 +37,10 @@ class User (Base):
 
     database_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     account_id: Mapped[str] = mapped_column(ForeignKey("building_account.account_id"),nullable=False,index=True,)
-#   account_database_id: Mapped[int] = mapped_column(ForeignKey("building_account.database_id"),index=True, nullable=False)
-
     user_name: Mapped[str] = mapped_column(String(50),nullable=False)
     email: Mapped[str] = mapped_column(String(50),nullable=False)
-    #
+    
     auth_user_id: Mapped[str] = mapped_column(String(100),unique=True,index=True,nullable=False)
-    #
     first_name: Mapped[str] = mapped_column(String(50),nullable=False)
     last_name: Mapped[str] = mapped_column(String(50),nullable=False)
     user_role: Mapped[str] = mapped_column(String(50),nullable=False)
@@ -65,6 +63,10 @@ class User (Base):
 #Reverse relationships
 
     building_account:Mapped ["BuildingAccount"] = relationship(back_populates= "users")
+    #
+    created_work_orders:Mapped [list ["WorkOrder"]] = relationship(back_populates= "created_by_user",
+                                                    foreign_keys="WorkOrder.created_by_user_id")
+    #
     
 class WorkOrder(Base):
     __tablename__ = "work_orders"
@@ -105,7 +107,12 @@ class WorkOrder(Base):
 #Reverse relationships
 
     building_account:Mapped ["BuildingAccount"] = relationship(back_populates= "work_orders")   
-
+    #
+    created_by_user_id: Mapped[int] = mapped_column(ForeignKey("User_table.database_id"),
+                                                    nullable=True,index=True,)
+    created_by_user:Mapped ["User"] = relationship(back_populates= "created_work_orders",
+                                                    foreign_keys=[created_by_user_id],)
+    #
 class WorkCompletion(Base):
 
     __tablename__ = "work_order_completion"
@@ -188,5 +195,32 @@ class Supplier(Base):
     #Reverse relationships
 
     building_account:Mapped ["BuildingAccount"] = relationship(back_populates= "suppliers")
-    
+
+class AuditLog(Base): 
+
+    __tablename__ = "audit_trail"
+    __table_args__= {"sqlite_autoincrement": True}
+
+    database_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    account_id: Mapped[str] = mapped_column(ForeignKey("building_account.account_id"),index=True, nullable=False)
+
+    created_at: Mapped [datetime] = mapped_column (
+        DateTime(timezone=True), 
+        default = lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    user_id: Mapped[str] = mapped_column(String(50), nullable = False,)
+    action: Mapped[str] = mapped_column(String(200), nullable = False,)
+    table_name: Mapped[str] = mapped_column(String(200), nullable = False,)
+    record_id: Mapped[str] = mapped_column(String(50), nullable = False,)
+    details: Mapped[str] = mapped_column(String(2000), nullable = False,)
+    created_at: Mapped [datetime] = mapped_column (
+        DateTime(timezone=True), 
+        default = lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    #Reverse relationships
+
+    building_account:Mapped ["BuildingAccount"] = relationship(back_populates= "audit_trails")    
     
