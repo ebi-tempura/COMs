@@ -165,7 +165,7 @@ class WorkCompletionRead (WorkCompletionCreate):
     work_order_id: int
     status:str
     created_at: datetime
-    created_by: str
+    created_by_user_id: int
 
     model_config = ConfigDict(from_attributes=True)
 

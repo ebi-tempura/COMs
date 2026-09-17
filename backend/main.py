@@ -894,6 +894,8 @@ def to_work_order_completion_read (record: WorkCompletion) -> WorkCompletionRead
         database_id=record.database_id,
         work_order_id=record.work_order_id,
         created_at=record.created_at,
+        status=record.status,
+        created_by_user_id=record.created_by_user_id,
         work_performed_date=record.work_performed_date,
         work_performed_description=record.work_performed_description,
         work_performed_observation=record.work_performed_observation,
@@ -943,7 +945,7 @@ def create_work_completion (
             action="Created work order completion",
             table_name="work_order_completion",
             record_id=str(record.database_id),
-            details=f"Work order completion created as Draft by {current_user.user_role}",
+            details=f"Work order completion created for President approval by {current_user.user_role}",
         )
     
     database.add(audit_record)
@@ -1177,7 +1179,7 @@ def approve_work_completion_by_board_member(
             detail="Work order completion not found",
         )
 
-    if completion_record.status != "Pending Board member Approval":
+    if completion_record.status != "Pending Board Member Approval":
         raise HTTPException(
             status_code=409,
             detail="Work order completion is not pending for treasurer approval",
@@ -1247,6 +1249,12 @@ def reject_work_completion_by_president(
             detail="Work order completion not found",
         )
 
+    if completion_record.status != "Pending President Approval":
+        raise HTTPException(
+            status_code=409,
+            detail="Work order completion is not pending for president approval",
+        )
+    
     if completion_record.created_by_user_id == current_user.database_id:
         raise HTTPException(
             status_code=403,
@@ -1307,6 +1315,12 @@ def reject_work_completion_by_treasurer(
         raise HTTPException(
             status_code=404,
             detail="Work order completion not found",
+        )
+
+    if completion_record.status != "Pending Treasurer Approval":
+        raise HTTPException(
+            status_code=409,
+            detail="Work order completion is not pending for treasurer approval",
         )
 
     if completion_record.created_by_user_id == current_user.database_id:
@@ -1371,6 +1385,12 @@ def reject_work_completion_by_board_member(
             detail="Work order completion not found",
         )
 
+    if completion_record.status != "Pending Board Member Approval":
+        raise HTTPException(
+            status_code=409,
+            detail="Work order completion is not pending for board member approval",
+        )
+    
     if completion_record.created_by_user_id == current_user.database_id:
         raise HTTPException(
             status_code=403,

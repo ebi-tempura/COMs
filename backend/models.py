@@ -138,7 +138,7 @@ class WorkCompletion(Base):
     work_performed_date: Mapped[date] = mapped_column(Date, nullable= False,)
 
     status: Mapped[str] = mapped_column(String(50), nullable=False, default= "Draft",)
-    created_by_user: Mapped[int] = mapped_column(ForeignKey("User_table.database_id"), nullable=False)
+    created_by_user_id: Mapped[int] = mapped_column(ForeignKey("User_table.database_id"), nullable=False)
 
     #Reverse relationships
 
@@ -152,7 +152,7 @@ class EmergencyWorkOrder(Base):
     database_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     work_order_id: Mapped[int] = mapped_column(ForeignKey("work_orders.database_id"),nullable=False,index=True,)
     status: Mapped[str] = mapped_column(String(50), nullable=False, default= "Draft",)
-    created_by_user: Mapped[int] = mapped_column(ForeignKey("User_table.database_id"), nullable=False)
+    created_by_user_id: Mapped[int] = mapped_column(ForeignKey("User_table.database_id"), nullable=False)
 
     created_at: Mapped [datetime] = mapped_column (
         DateTime(timezone=True), 
