@@ -113,13 +113,14 @@ class WorkOrder(Base):
     created_by_user:Mapped ["User"] = relationship(back_populates= "created_work_orders",
                                                     foreign_keys=[created_by_user_id],)
     #
+
 class WorkCompletion(Base):
 
     __tablename__ = "work_order_completion"
     __table_args__= {"sqlite_autoincrement": True}
 
     database_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    
+
     work_order_id: Mapped[int] = mapped_column(
     ForeignKey("work_orders.database_id"),
     nullable=False,
@@ -136,6 +137,9 @@ class WorkCompletion(Base):
     work_performed_observation: Mapped[str] = mapped_column(String(500), nullable= False,)
     work_performed_date: Mapped[date] = mapped_column(Date, nullable= False,)
 
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default= "Draft",)
+    created_by_user: Mapped[int] = mapped_column(ForeignKey("User_table.database_id"), nullable=False)
+
     #Reverse relationships
 
     #building_account:Mapped ["BuildingAccount"] = relationship(back_populates= "work_order_completions")   
@@ -147,7 +151,8 @@ class EmergencyWorkOrder(Base):
 
     database_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     work_order_id: Mapped[int] = mapped_column(ForeignKey("work_orders.database_id"),nullable=False,index=True,)
-
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default= "Draft",)
+    created_by_user: Mapped[int] = mapped_column(ForeignKey("User_table.database_id"), nullable=False)
 
     created_at: Mapped [datetime] = mapped_column (
         DateTime(timezone=True), 
@@ -210,6 +215,10 @@ class AuditLog(Base):
         nullable=False,
     )
     user_id: Mapped[str] = mapped_column(String(50), nullable = False,)
+    #
+    user_name: Mapped[str] = mapped_column(String(50),nullable= False,)
+    user_role: Mapped[str] = mapped_column(String(50),nullable= False,)
+     #
     action: Mapped[str] = mapped_column(String(200), nullable = False,)
     table_name: Mapped[str] = mapped_column(String(200), nullable = False,)
     record_id: Mapped[str] = mapped_column(String(50), nullable = False,)
