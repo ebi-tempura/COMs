@@ -144,6 +144,7 @@ class WorkEmergencyCreate (BaseModel):
 class WorkEmergencyRead (WorkEmergencyCreate): 
 
     database_id: int
+    emergency_number: str
     work_order_id:int
     status:str
     created_at: datetime
@@ -164,6 +165,7 @@ class WorkCompletionCreate (BaseModel):
 class WorkCompletionRead (WorkCompletionCreate):
 #
     database_id: int
+    completion_number: str
     work_order_id: int
     status:str
     created_at: datetime

@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from auth import get_supabase_user
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -749,6 +749,7 @@ def to_work_emergency_read(record: EmergencyWorkOrder) -> WorkEmergencyRead:
     return WorkEmergencyRead(
 
         database_id=record.database_id,
+        emergency_number=record.emergency_number,
         work_order_id=record.work_order_id,
         created_at=record.created_at,
         status=record.status,
@@ -788,7 +789,19 @@ def create_work_emergency(
             detail="Work order not found",
         )
 
+    emergency_sequence = (
+        database.scalar(
+            select(func.count()).select_from(EmergencyWorkOrder).where(
+                EmergencyWorkOrder.work_order_id == work_order.database_id
+            )
+        )
+        or 0
+    ) + 1
+
     record = EmergencyWorkOrder(
+        emergency_number=(
+            f"{work_order.work_order_number}-E{emergency_sequence:02d}"
+        ),
         work_order_id=work_order.database_id,
         status = "Submitted",
         created_by_user_id = current_user.database_id,
@@ -811,7 +824,7 @@ def create_work_emergency(
         user_role=current_user.user_role,
         action="Created emergency work order",
         table_name="work_order_emergency",
-        record_id=str(record.database_id),
+        record_id=record.emergency_number,
         details=f"Emergency work order submitted by {current_user.user_role}",
     )
 
@@ -877,6 +890,7 @@ def to_work_order_completion_read (record: WorkCompletion) -> WorkCompletionRead
 
     return WorkCompletionRead(
         database_id=record.database_id,
+        completion_number=record.completion_number,
         work_order_id=record.work_order_id,
         created_at=record.created_at,
         status=record.status,
@@ -910,7 +924,19 @@ def create_work_completion (
             detail="Work order not found",
         )
 
+    completion_sequence = (
+        database.scalar(
+            select(func.count()).select_from(WorkCompletion).where(
+                WorkCompletion.work_order_id == work_order.database_id
+            )
+        )
+        or 0
+    ) + 1
+
     record = WorkCompletion(
+        completion_number=(
+            f"{work_order.work_order_number}-C{completion_sequence:02d}"
+        ),
         work_order_id=work_order.database_id,
         created_by_user_id = current_user.database_id,
         status = "Pending President Approval",
@@ -929,7 +955,7 @@ def create_work_completion (
             user_role=current_user.user_role,
             action="Created work order completion",
             table_name="work_order_completion",
-            record_id=str(record.database_id),
+            record_id=record.completion_number,
             details=f"Work order completion created for President approval by {current_user.user_role}",
         )
     
@@ -1049,7 +1075,7 @@ def approve_work_completion_by_president(
         user_role=current_user.user_role,
         action="Approved work order completion",
         table_name="work_order_completion",
-        record_id=str(completion_record.database_id),
+        record_id=completion_record.completion_number,
         details="Approved",
     )
 
@@ -1127,7 +1153,7 @@ def approve_work_completion_by_treasurer(
         user_role=current_user.user_role,
         action="Approved work order completion",
         table_name="work_order_completion",
-        record_id=str(completion_record.database_id),
+        record_id=completion_record.completion_number,
         details="Approved",
     )
 
@@ -1195,7 +1221,7 @@ def approve_work_completion_by_board_member(
         user_role=current_user.user_role,
         action="Approved work order completion",
         table_name="work_order_completion",
-        record_id=str(completion_record.database_id),
+        record_id=completion_record.completion_number,
         details="Approved",
     )
 
@@ -1265,7 +1291,7 @@ def reject_work_completion_by_president(
         user_role=current_user.user_role,
         action="Rejected work order completion",
         table_name="work_order_completion",
-        record_id=str(completion_record.database_id),
+        record_id=completion_record.completion_number,
         details="Rejected",
     )
 
@@ -1333,7 +1359,7 @@ def reject_work_completion_by_treasurer(
         user_role=current_user.user_role,
         action="Reject work order completion",
         table_name="work_order_completion",
-        record_id=str(completion_record.database_id),
+        record_id=completion_record.completion_number,
         details="Work order completion rejected by Treasurer",
     )
 
@@ -1401,7 +1427,7 @@ def reject_work_completion_by_board_member(
         user_role=current_user.user_role,
         action="Rejected work order completion",
         table_name="work_order_completion",
-        record_id=str(completion_record.database_id),
+        record_id=completion_record.completion_number,
         details="Work order completion rejected by Board Member",
     )
 
@@ -1971,17 +1997,37 @@ def read_work_order_audit_logs(
             detail="Work order not found",
         )
 
-    completion_ids = database.scalars(
-        select(WorkCompletion.database_id).where(
-            WorkCompletion.work_order_id == work_order.database_id
-        )
-    ).all()
+    completion_record_ids = [
+        str(record_id)
+        for record_id in database.scalars(
+            select(WorkCompletion.database_id).where(
+                WorkCompletion.work_order_id == work_order.database_id
+            )
+        ).all()
+    ]
+    completion_record_ids.extend(
+        database.scalars(
+            select(WorkCompletion.completion_number).where(
+                WorkCompletion.work_order_id == work_order.database_id
+            )
+        ).all()
+    )
 
-    emergency_ids = database.scalars(
-        select(EmergencyWorkOrder.database_id).where(
-            EmergencyWorkOrder.work_order_id == work_order.database_id
-        )
-    ).all()
+    emergency_record_ids = [
+        str(record_id)
+        for record_id in database.scalars(
+            select(EmergencyWorkOrder.database_id).where(
+                EmergencyWorkOrder.work_order_id == work_order.database_id
+            )
+        ).all()
+    ]
+    emergency_record_ids.extend(
+        database.scalars(
+            select(EmergencyWorkOrder.emergency_number).where(
+                EmergencyWorkOrder.work_order_id == work_order.database_id
+            )
+        ).all()
+    )
 
     statement = (
         select(AuditLog)
@@ -1999,7 +2045,7 @@ def read_work_order_audit_logs(
                 )
                 & (
                     AuditLog.record_id.in_(
-                        [str(record_id) for record_id in completion_ids]
+                        completion_record_ids
                     )
                 ),
                 (
@@ -2007,7 +2053,7 @@ def read_work_order_audit_logs(
                 )
                 & (
                     AuditLog.record_id.in_(
-                        [str(record_id) for record_id in emergency_ids]
+                        emergency_record_ids
                     )
                 ),
             ),

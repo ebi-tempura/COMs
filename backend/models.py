@@ -120,6 +120,7 @@ class WorkCompletion(Base):
     __table_args__= {"sqlite_autoincrement": True}
 
     database_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    completion_number: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
 
     work_order_id: Mapped[int] = mapped_column(
     ForeignKey("work_orders.database_id"),
@@ -150,6 +151,7 @@ class EmergencyWorkOrder(Base):
     __table_args__= {"sqlite_autoincrement": True}
 
     database_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    emergency_number: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
     work_order_id: Mapped[int] = mapped_column(ForeignKey("work_orders.database_id"),nullable=False,index=True,)
     status: Mapped[str] = mapped_column(String(50), nullable=False, default= "Draft",)
     created_by_user_id: Mapped[int] = mapped_column(ForeignKey("User_table.database_id"), nullable=False)
