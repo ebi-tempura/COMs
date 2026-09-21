@@ -178,7 +178,8 @@ class Supplier(Base):
 
     database_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     account_id: Mapped[str] = mapped_column(ForeignKey("building_account.account_id"),index=True, nullable=False)
-
+    status: Mapped[str] = mapped_column(String(50), default="Draft", server_default="Draft", nullable=False,)
+    created_by_user_id: Mapped[int|None] = mapped_column(ForeignKey("User_table.database_id"),   nullable=True, index=True,)
     created_at: Mapped [datetime] = mapped_column (
         DateTime(timezone=True), 
         default = lambda: datetime.now(timezone.utc),
@@ -214,20 +215,13 @@ class AuditLog(Base):
         default = lambda: datetime.now(timezone.utc),
         nullable=False,
     )
-    user_id: Mapped[str] = mapped_column(String(50), nullable = False,)
-    #
     user_name: Mapped[str] = mapped_column(String(50),nullable= False,)
     user_role: Mapped[str] = mapped_column(String(50),nullable= False,)
-     #
     action: Mapped[str] = mapped_column(String(200), nullable = False,)
     table_name: Mapped[str] = mapped_column(String(200), nullable = False,)
     record_id: Mapped[str] = mapped_column(String(50), nullable = False,)
     details: Mapped[str] = mapped_column(String(2000), nullable = False,)
-    created_at: Mapped [datetime] = mapped_column (
-        DateTime(timezone=True), 
-        default = lambda: datetime.now(timezone.utc),
-        nullable=False,
-    )
+    user_id: Mapped[str] = mapped_column(String(50), nullable = False,)    
 
     #Reverse relationships
 

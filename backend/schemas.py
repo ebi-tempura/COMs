@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 #######################################
 
-class BuildingAccountCreate (BaseModel):
+class BuildingAccountCreate (BaseModel):    
 #
     #database_id: int = Field(min_length=1, max_length=50)
     account_id: str = Field (min_length=1, max_length=50)
@@ -118,9 +118,11 @@ class SupplierCreate(BaseModel):
 
 class SupplierRead(SupplierCreate):   
 
+    
     database_id: int
     account_id: str
-    #
+    status: str
+    created_by_user_id: int| None=None
     created_at: datetime = None
     supplier_id: str | None = None
 
@@ -195,5 +197,4 @@ class AuditLogRead (AuditLogCreate):
     record_id: str
     details: str
     created_at: datetime
-
     model_config = ConfigDict(from_attributes=True)

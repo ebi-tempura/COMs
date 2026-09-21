@@ -1,11 +1,11 @@
 from datetime import datetime
-
+from decimal import Decimal
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from auth import get_supabase_user
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -417,35 +417,6 @@ def approve_work_order_by_president(
 
     work_order.status = "Pending Treasurer Approval"
 
-
-    record = WorkOrder(
-
-        account_id=current_user.account_id,
-        status="Draft",
-        created_year=datetime.now().year,
-        title=work_order.title,
-        supplier=work_order.supplier,
-        amount=work_order.amount,
-        priority=work_order.priority,
-        type=work_order.type,
-        category=work_order.category,
-        location=work_order.location,
-        description=work_order.description,
-        target_date=work_order.target_date,
-        created_by_user_id=current_user.database_id,
-    )
-
-    database.add(record)
-    database.flush()
-
-    record.work_order_number = (
-        f"WO-{record.created_year}-"
-        f"{record.database_id:04d}"
-    )
-
-    database.commit()
-    database.refresh(record)
-
     audit_record = AuditLog(
             account_id=current_user.account_id,
             user_id=current_user.auth_user_id,
@@ -454,7 +425,7 @@ def approve_work_order_by_president(
             action="Approved Work Order",
             table_name="work_orders",
             record_id=work_order.work_order_number,
-            details=f"Work order approved by President",
+            details=f"Approved",
             )
     
     database.add(audit_record)
@@ -498,9 +469,11 @@ def approve_work_order_by_treasurer(
             detail="The Work Order creator cannot approve it",
         )
 
-    needs_board_approval =(
+    needs_board_approval = (
         work_order.type == "Emergency"
         or work_order.priority == "High"
+        or work_order.amount >= Decimal("10000.00")
+
     )
 
     if needs_board_approval:
@@ -516,7 +489,7 @@ def approve_work_order_by_treasurer(
                 action="Approved Work Order",
                 table_name="work_orders",
                 record_id=work_order.work_order_number,
-                details=f"Work order approved by Treasurer",
+                details=f"Approved",
                 )
         
     database.add(audit_record)
@@ -561,6 +534,19 @@ def approve_work_order_by_board_member(
         )
 
     work_order.status = "Approved"
+
+    audit_record = AuditLog(
+                account_id=current_user.account_id,
+                user_id=current_user.auth_user_id,
+                user_name=f"{current_user.first_name} {current_user.last_name}",
+                user_role=current_user.user_role,
+                action="Approved Work Order",
+                table_name="work_orders",
+                record_id=work_order.work_order_number,
+                details=f"Approved",
+                )
+        
+    database.add(audit_record)
 
     database.commit()
     database.refresh(work_order)
@@ -614,7 +600,7 @@ def reject_work_order_by_president(
         action="Rejected work order",
         table_name="work_orders",
         record_id=work_order.work_order_number,
-        details=f"Work order rejected by President",
+        details=f"Rejected",
         )
 
     database.add(audit_record)
@@ -658,16 +644,6 @@ def reject_work_order_by_treasurer(
             detail="The Work Order creator cannot approve it"
         )
 
-    needs_board_approval =(
-        work_order.type == "Emergency"
-        or work_order.priority == "High"
-    )
-
-    if needs_board_approval:
-        work_order.status = "Pending Board Member Approval"
-    else:
-        work_order.status = "Rejected by treasurer"
-
     audit_record = AuditLog(
         account_id=current_user.account_id,
         user_id=current_user.auth_user_id,
@@ -686,7 +662,7 @@ def reject_work_order_by_treasurer(
     return to_work_order_read(work_order)
 
 @app.post(
-    "/api/work-orders/{work_order_number}/approve-board_member",
+    "/api/work-orders/{work_order_number}/reject-board_member",
     response_model=WorkOrderRead,
 )
 
@@ -775,6 +751,8 @@ def to_work_emergency_read(record: EmergencyWorkOrder) -> WorkEmergencyRead:
         database_id=record.database_id,
         work_order_id=record.work_order_id,
         created_at=record.created_at,
+        status=record.status,
+        created_by_user_id=record.created_by_user_id,
         wo_emergency_what=record.wo_emergency_what,
         wo_emergency_where=record.wo_emergency_where,
         wo_emergency_when=record.wo_emergency_when,
@@ -794,7 +772,8 @@ def create_work_emergency(
     work_order_number:str,
     emergency: WorkEmergencyCreate,
     current_user: User = Depends(require_roles("Admin", "Manager", "Staff")),
-    database: Session = Depends(get_db)
+    database: Session = Depends(get_db),
+    
 ):
     work_order = database.scalar(
         select(WorkOrder).where(
@@ -802,6 +781,7 @@ def create_work_emergency(
             WorkOrder.account_id == current_user.account_id
         )
     )
+
     if work_order is None:
         raise HTTPException(
             status_code=404,
@@ -810,6 +790,8 @@ def create_work_emergency(
 
     record = EmergencyWorkOrder(
         work_order_id=work_order.database_id,
+        status = "Submitted",
+        created_by_user_id = current_user.database_id,
         wo_emergency_what=emergency.wo_emergency_what,
         wo_emergency_where=emergency.wo_emergency_where,
         wo_emergency_when=emergency.wo_emergency_when,
@@ -820,6 +802,21 @@ def create_work_emergency(
     )
 
     database.add(record)
+    database.flush()
+
+    audit_record = AuditLog(
+        account_id=current_user.account_id,
+        user_id=current_user.auth_user_id,
+        user_name=f"{current_user.first_name} {current_user.last_name}",
+        user_role=current_user.user_role,
+        action="Created emergency work order",
+        table_name="work_order_emergency",
+        record_id=str(record.database_id),
+        details=f"Emergency work order submitted by {current_user.user_role}",
+    )
+
+    database.add(audit_record)
+
     database.commit()
     database.refresh(record)
 
@@ -833,46 +830,34 @@ def create_work_emergency(
     )
 
 def read_work_emergency(
-    work_order_id:str,
+    work_order_number:str,
     supabase_user = Depends(get_supabase_user),
     database: Session =Depends(get_db),
 ):
-    user_statement = select(User).where(
-        User.auth_user_id == supabase_user.id
-    )
-    current_user = database.scalar(user_statement)
+    current_user = database.scalar(select(User).where(User.auth_user_id==supabase_user.id))
+
     if current_user is None:
         raise HTTPException(
             status_code=404,
             detail="COMS User not found"
         )
 
-    print("\n--- EMERGENCY WO SECURITY TEST ---")
-    print("Authenticated user:", current_user.email)
-    print("User account:", current_user.account_id)
-    print("Requested work_order_id:", work_order_id)
-
-    work_order_statement = select(WorkOrder).where(
-        WorkOrder.database_id == work_order_id,
-        WorkOrder.account_id == current_user.account_id
-    )
-    work_order = database.scalar(work_order_statement)
-
-    print("ACCESS DENIED: Work order does not belong to this account")
-    print("----------------------------------\n")
-    
-    print("Work order account:", work_order.account_id)
-    print("ACCESS GRANTED")
-
-    
+    work_order = database.scalar(
+        select(WorkOrder).where(
+            WorkOrder.work_order_number == work_order_number,
+            WorkOrder.account_id == current_user.account_id,
+            )
+        )  
+      
     if work_order is None:
         raise HTTPException(
             status_code=404,
             detail="Work order not found",
         )
+    
     statement = (select(EmergencyWorkOrder)
                 .where(
-                EmergencyWorkOrder.work_order_id == work_order_id)
+                EmergencyWorkOrder.work_order_id == work_order.database_id)
                 .order_by(EmergencyWorkOrder.database_id) 
             )
 
@@ -1065,7 +1050,7 @@ def approve_work_completion_by_president(
         action="Approved work order completion",
         table_name="work_order_completion",
         record_id=str(completion_record.database_id),
-        details="Work order completion approved by President",
+        details="Approved",
     )
 
     database.add(audit_record)
@@ -1123,7 +1108,17 @@ def approve_work_completion_by_treasurer(
             detail="Work order completion creator cannot approve it",
         )
 
-    completion_record.status = "Pending Board Member Approval"
+    needs_board_approval = (
+        work_order.type == "Emergency"
+        or work_order.priority == "High"
+        or work_order.amount >= Decimal("10000.00")
+
+    )
+
+    if needs_board_approval:
+        completion_record.status = "Pending Board Member Approval"
+    else:
+        completion_record.status = "Approved"
 
     audit_record = AuditLog(
         account_id=current_user.account_id,
@@ -1133,7 +1128,7 @@ def approve_work_completion_by_treasurer(
         action="Approved work order completion",
         table_name="work_order_completion",
         record_id=str(completion_record.database_id),
-        details="Work order completion approved by Treasurer",
+        details="Approved",
     )
 
     database.add(audit_record)
@@ -1201,7 +1196,7 @@ def approve_work_completion_by_board_member(
         action="Approved work order completion",
         table_name="work_order_completion",
         record_id=str(completion_record.database_id),
-        details="Work order completion approved by Board Member",
+        details="Approved",
     )
 
     database.add(audit_record)
@@ -1271,7 +1266,7 @@ def reject_work_completion_by_president(
         action="Rejected work order completion",
         table_name="work_order_completion",
         record_id=str(completion_record.database_id),
-        details="Work order completion rejected by President",
+        details="Rejected",
     )
 
     database.add(audit_record)
@@ -1425,7 +1420,8 @@ def to_supplier_read(record: Supplier) -> SupplierRead:
     return SupplierRead(
         database_id=record.database_id,
         account_id=record.account_id,
-        #
+        status=record.status,
+        created_by_user_id=record.created_by_user_id,
         supplier_id=record.supplier_id,
         supplier_type=record.supplier_type,
         supplier_name=record.supplier_name,
@@ -1454,9 +1450,9 @@ def create_supplier(
 ):
 
     record = Supplier(
-
     account_id =current_user.account_id,
     created_by_user_id = current_user.database_id,
+    status="Draft",
     supplier_type=supplier.supplier_type,
     supplier_name=supplier.supplier_name,
     service_category=supplier.service_category,
@@ -1482,9 +1478,9 @@ def create_supplier(
     user_id=current_user.auth_user_id,
     user_name=f"{current_user.first_name} {current_user.last_name}",
     user_role=current_user.user_role,
-    action="created supplier",
+    action="Created supplier",
     table_name="suppliers",
-    record_id=record.supplier_number,
+    record_id=record.supplier_id,
     details=f"Supplier created by {current_user.user_role}",
     )
     database.add(audit_record)
@@ -1522,43 +1518,100 @@ def read_supplier (
 
     return records
 
+@app.post(
+    "/api/suppliers/{supplier_id}/submit",
+    response_model=SupplierRead,
+)
+
+def submit_supplier(
+    supplier_id: str,
+    current_user: User = Depends(
+        require_roles("Admin", "Manager", "Staff")
+    ),
+    database: Session = Depends(get_db),
+):
+    supplier_record = database.scalar(
+        select(Supplier).where(
+            Supplier.supplier_id == supplier_id,
+            Supplier.account_id == current_user.account_id,
+        )
+    )
+
+    if supplier_record is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Supplier not found",
+        )
+
+    if supplier_record.status != "Draft":
+        raise HTTPException(
+            status_code=409,
+            detail="Only Draft suppliers can be submitted",
+        )
+
+    if supplier_record.created_by_user_id != current_user.database_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Only the Supplier creator can submit it",
+        )
+
+    supplier_record.status = "Pending President Approval"
+
+    audit_record = AuditLog(
+        account_id=current_user.account_id,
+        user_id=current_user.auth_user_id,
+        user_name=f"{current_user.first_name} {current_user.last_name}",
+        user_role=current_user.user_role,
+        action="Submitted supplier",
+        table_name="suppliers",
+        record_id=supplier_record.supplier_id,
+        details=f"Supplier submitted by {current_user.user_role}.",
+    )
+
+    database.add(audit_record)
+    database.commit()
+    database.refresh(supplier_record)
+
+    return to_supplier_read(supplier_record)
+        
 #Supplier approve
 
 @app.post(
-    "/api/suppliers/{supplier_num}/approve-president",
+    "/api/suppliers/{supplier_id}/approve-president",
     response_model= SupplierRead,
 )
 
 def approve_supplier_by_president(
-    supplier_number: str,
+    supplier_id: str,
     current_user:User = Depends(require_roles("President")),
     database: Session = Depends(get_db),
 ):
     supplier_record = database.scalar(
         select(Supplier).where(
-            Supplier.supplier_number == supplier_number,
+            Supplier.supplier_id == supplier_id,
             Supplier.account_id == current_user.account_id,
         )
     )
 
-    if Supplier is None:
+    if supplier_record is None:
         raise HTTPException (
         status_code= 404,
         detail= "Supplier not found",
     )
 
-    if Supplier.status != "Pending President Approval":
+    if supplier_record.status != "Pending President Approval":
         raise HTTPException (
         status_code= 409,
         detail= "Supplier is not pending for president approval",
     )
 
-    if Supplier.created_by_user_id == current_user.database_id:
+    if supplier_record.created_by_user_id == current_user.database_id:
         raise HTTPException (
         status_code= 403,
         detail= "Supplier creator cannot approve it",
     )
 
+    supplier_record.status = "Pending Treasurer Approval"
 
     audit_record = AuditLog(
         account_id=current_user.account_id,
@@ -1567,49 +1620,52 @@ def approve_supplier_by_president(
         user_role=current_user.user_role,
         action="Approved supplier",
         table_name="suppliers",
-        record_id=supplier_record.supplier_number,
-        details="Supplier approved by President",
+        record_id=supplier_record.supplier_id,
+        details="Approved",
     )
 
     database.add(audit_record)
     database.commit()
-    database.refresh(Supplier)
+    database.refresh(supplier_record)
 
-    return to_supplier_read(Supplier)
+    return to_supplier_read(supplier_record)
 
-@app.post(      
-    "/api/suppliers/{supplier_number}/approve-treasurer",
-    response_model= SupplierRead,
+@app.post(
+    "/api/suppliers/{supplier_id}/approve-treasurer",
+    response_model=SupplierRead,
 )
 
 def approve_supplier_by_treasurer(
-    supplier_number: str,
+    supplier_id: str,
     current_user: User = Depends(require_roles("Treasurer")),
-    database: Session = Depends (get_db),
+    database: Session = Depends(get_db),
 ):
     supplier_record = database.scalar(
         select(Supplier).where(
-            Supplier.supplier_number == supplier_number,
+            Supplier.supplier_id == supplier_id,
             Supplier.account_id == current_user.account_id,
         )
-    )   
+    )
 
-    if supplier_number is None:
-        raise HTTPException (
-            status_code= 404,
-            detail= "Supplier not found"
+    if supplier_record is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Supplier not found",
         )
-    if Supplier.status != "Pending Treasurer Approval":
-        raise HTTPException (
-        status_code= 409,
-        detail= "Supplier is not pending for treasurer approval",
-    )
 
-    if Supplier.created_by_user_id == current_user.database_id:
-        raise HTTPException (
-        status_code= 403,
-        detail= "Supplier creator cannot approve it",
-    )
+    if supplier_record.status != "Pending Treasurer Approval":
+        raise HTTPException(
+            status_code=409,
+            detail="Supplier is not pending Treasurer approval",
+        )
+
+    if supplier_record.created_by_user_id == current_user.database_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Supplier creator cannot approve it",
+        )
+
+    supplier_record.status = "Pending Board Member Approval"
 
     audit_record = AuditLog(
         account_id=current_user.account_id,
@@ -1618,86 +1674,85 @@ def approve_supplier_by_treasurer(
         user_role=current_user.user_role,
         action="Approved supplier",
         table_name="suppliers",
-        record_id=supplier_record.supplier_number,
-        details="Supplier approved by Treasurer",
+        record_id=supplier_record.supplier_id,
+        details="Approved",
     )
 
     database.add(audit_record)
-
     database.commit()
-    database.refresh(Supplier)
+    database.refresh(supplier_record)
 
-    return to_supplier_read(Supplier)
-    
+    return to_supplier_read(supplier_record)    
+
 @app.post(
-    "/api/supplier/{supplier_num}/approve-board_member",
+    "/api/suppliers/{supplier_id}/approve-board-member",
     response_model= SupplierRead,
 )
 
 def approve_supplier_by_board_member(
-    supplier_number: str,
+    supplier_id: str,
     current_user: User = Depends(require_roles("Board Member")),
-    database: Session = Depends (get_db),
+    database: Session = Depends(get_db),
 ):
     supplier_record = database.scalar(
         select(Supplier).where(
-            Supplier.supplier_number == supplier_number,
+            Supplier.supplier_id == supplier_id,
             Supplier.account_id == current_user.account_id,
         )
     )   
 
-    if supplier_number is None:
+    if supplier_record is None:
         raise HTTPException (
             status_code= 404,
             detail= "Supplier not found"
         )
-    if Supplier.status != "Pending Board Member Approval":
+
+    if supplier_record.status != "Pending Board Member Approval":
         raise HTTPException (
         status_code= 409,
         detail= "Supplier is not pending for Board Member approval",
     )
 
-    if Supplier.created_by_user_id == current_user.database_id:
+    if supplier_record.created_by_user_id == current_user.database_id:
         raise HTTPException (
         status_code= 403,
         detail= "Supplier creator cannot approve it",
     )
 
-        supplier_record.status = "Rejected by President"
+    supplier_record.status = "Approved"
 
     audit_record = AuditLog(
-    account_id=current_user.account_id,
-    user_id=current_user.auth_user_id,
-    user_name=f"{current_user.first_name} {current_user.last_name}",
-    user_role=current_user.user_role,
-    action="Approved supplier",
-    table_name="suppliers",
-    record_id=supplier_record.supplier_number,
-    details="Supplier approved by Board Member",
+        account_id=current_user.account_id,
+        user_id=current_user.auth_user_id,
+        user_name=f"{current_user.first_name} {current_user.last_name}",
+        user_role=current_user.user_role,
+        action="Approved supplier",
+        table_name="suppliers",
+        record_id=supplier_record.supplier_id,
+        details="Approved",
     )
 
     database.add(audit_record)
-
     database.commit()
-    database.refresh(Supplier)
+    database.refresh(supplier_record)
 
-    return to_supplier_read(Supplier)
+    return to_supplier_read(supplier_record)
 
 #Supplier reject
 
 @app.post(
-    "/api/suppliers/{supplier_number}/reject-president",
+    "/api/suppliers/{supplier_id}/reject-president",
     response_model= SupplierRead,
 )
 
 def reject_supplier_by_president(
-    supplier_number: str,
+    supplier_id: str,
     current_user: User = Depends(require_roles("President")),
     database: Session = Depends(get_db),
 ):
     supplier_record = database.scalar(
         select(Supplier).where(
-            Supplier.supplier_number == supplier_number,
+            Supplier.supplier_id == supplier_id,
             Supplier.account_id == current_user.account_id,
         )
     )
@@ -1729,8 +1784,8 @@ def reject_supplier_by_president(
     user_role=current_user.user_role,
     action="Rejected supplier",
     table_name="suppliers",
-    record_id=supplier_record.supplier_number,
-    details="Supplier rejected by President",
+    record_id=supplier_record.supplier_id,
+    details="Rejected",
     )
 
     database.add(audit_record)
@@ -1741,18 +1796,18 @@ def reject_supplier_by_president(
     return to_supplier_read(supplier_record)
 
 @app.post(
-    "/api/suppliers/{supplier_number}/reject-treasurer",
+    "/api/suppliers/{supplier_id}/reject-treasurer",
     response_model= SupplierRead,
 )
 
 def reject_supplier_by_treasurer(
-    supplier_number: str,
+    supplier_id: str,
     current_user: User = Depends(require_roles("Treasurer")),
     database: Session = Depends(get_db),
 ):
     supplier_record = database.scalar(
         select(Supplier).where(
-            Supplier.supplier_number == supplier_number,
+            Supplier.supplier_id == supplier_id,
             Supplier.account_id == current_user.account_id,
         )
     )
@@ -1775,7 +1830,7 @@ def reject_supplier_by_treasurer(
             detail="The supplier creator cannot reject it",
         )
 
-    supplier_record.status = "Rejected by Treasurer"
+    supplier_record.status = "Rejected"
 
     audit_record = AuditLog(
     account_id=current_user.account_id,
@@ -1796,18 +1851,18 @@ def reject_supplier_by_treasurer(
     return to_supplier_read(supplier_record)
 
 @app.post(
-    "/api/suppliers/{supplier_number}/reject-board-member",
+    "/api/suppliers/{supplier_id}/reject-board-member",
     response_model= SupplierRead,
 )
 
 def reject_supplier_by_board_member(
-    supplier_number: str,
+    supplier_id: str,
     current_user: User = Depends(require_roles("Board Member")),
     database: Session = Depends(get_db),
 ):
     supplier_record = database.scalar(
         select(Supplier).where(
-            Supplier.supplier_number == supplier_number,
+            Supplier.supplier_id == supplier_id,
             Supplier.account_id == current_user.account_id,
         )
     )
@@ -1830,7 +1885,7 @@ def reject_supplier_by_board_member(
             detail="The supplier creator cannot reject it",
         )
 
-    supplier_record.status = "Rejected by Board Member"
+    supplier_record.status = "Rejected"
 
     audit_record = AuditLog(
         account_id=current_user.account_id,
@@ -1882,6 +1937,82 @@ def read_audit_logs(
         select(AuditLog)
         .where(AuditLog.account_id == current_user.account_id)
         .order_by(AuditLog.created_at.desc())
+    )
+
+    records = database.scalars(statement).all()
+
+    return [
+        to_audit_log_read(record)
+        for record in records
+    ]
+
+@app.get(
+    "/api/work-orders/{work_order_number}/audit-logs",
+    response_model=list[AuditLogRead],
+)
+
+def read_work_order_audit_logs(
+    work_order_number: str,
+    current_user: User = Depends(
+        require_roles("Admin", "President", "Treasurer", "Board Member")
+    ),
+    database: Session = Depends(get_db),
+):
+    work_order = database.scalar(
+        select(WorkOrder).where(
+            WorkOrder.work_order_number == work_order_number,
+            WorkOrder.account_id == current_user.account_id,
+        )
+    )
+
+    if work_order is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Work order not found",
+        )
+
+    completion_ids = database.scalars(
+        select(WorkCompletion.database_id).where(
+            WorkCompletion.work_order_id == work_order.database_id
+        )
+    ).all()
+
+    emergency_ids = database.scalars(
+        select(EmergencyWorkOrder.database_id).where(
+            EmergencyWorkOrder.work_order_id == work_order.database_id
+        )
+    ).all()
+
+    statement = (
+        select(AuditLog)
+        .where(
+            AuditLog.account_id == current_user.account_id,
+            or_(
+                (
+                    AuditLog.table_name == "work_orders"
+                )
+                & (
+                    AuditLog.record_id == work_order.work_order_number
+                ),
+                (
+                    AuditLog.table_name == "work_order_completion"
+                )
+                & (
+                    AuditLog.record_id.in_(
+                        [str(record_id) for record_id in completion_ids]
+                    )
+                ),
+                (
+                    AuditLog.table_name == "work_order_emergency"
+                )
+                & (
+                    AuditLog.record_id.in_(
+                        [str(record_id) for record_id in emergency_ids]
+                    )
+                ),
+            ),
+        )
+        .order_by(AuditLog.created_at.asc())
     )
 
     records = database.scalars(statement).all()
