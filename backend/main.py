@@ -1018,13 +1018,13 @@ def read_work_completion(
 #Work Order completion approval
 
 @app.post(
-    "/api/work-orders/{work_order_number}/WO-completion/{completion_id}/approve-president",
+    "/api/work-orders/{work_order_number}/WO-completion/{completion_number}/approve-president",
     response_model=WorkCompletionRead,
 )
 
 def approve_work_completion_by_president(
     work_order_number: str,
-    completion_id: int,
+    completion_number: str,
     current_user: User = Depends(require_roles("President")),
     database: Session = Depends(get_db),
 ):
@@ -1043,7 +1043,7 @@ def approve_work_completion_by_president(
 
     completion_record = database.scalar(
         select(WorkCompletion).where(
-            WorkCompletion.database_id == completion_id,
+            WorkCompletion.completion_number == completion_number,
             WorkCompletion.work_order_id == work_order.database_id,
         )
     )
@@ -1086,13 +1086,13 @@ def approve_work_completion_by_president(
     return to_work_order_completion_read(completion_record)
 
 @app.post(
-    "/api/work-orders/{work_order_number}/WO-completion/{completion_id}/approve-treasurer",
+    "/api/work-orders/{work_order_number}/WO-completion/{completion_number}/approve-treasurer",
     response_model=WorkCompletionRead,
 )
 
 def approve_work_completion_by_treasurer(
     work_order_number: str,
-    completion_id: int,
+    completion_number: str,
     current_user: User = Depends(require_roles("Treasurer")),
     database: Session = Depends(get_db),
 ):
@@ -1111,7 +1111,7 @@ def approve_work_completion_by_treasurer(
 
     completion_record = database.scalar(
         select(WorkCompletion).where(
-            WorkCompletion.database_id == completion_id,
+            WorkCompletion.completion_number == completion_number,
             WorkCompletion.work_order_id == work_order.database_id,
         )
     )
@@ -1164,13 +1164,13 @@ def approve_work_completion_by_treasurer(
     return to_work_order_completion_read(completion_record)
 
 @app.post(
-    "/api/work-orders/{work_order_number}/WO-completion/{completion_id}/approve-board-member",
+    "/api/work-orders/{work_order_number}/WO-completion/{completion_number}/approve-board-member",
     response_model=WorkCompletionRead,
 )
 
 def approve_work_completion_by_board_member(
     work_order_number: str,
-    completion_id: int,
+    completion_number: str,
     current_user: User = Depends(require_roles("Board Member")),
     database: Session = Depends(get_db),
 ):
@@ -1189,7 +1189,7 @@ def approve_work_completion_by_board_member(
 
     completion_record = database.scalar(
         select(WorkCompletion).where(
-            WorkCompletion.database_id == completion_id,
+            WorkCompletion.completion_number == completion_number,
             WorkCompletion.work_order_id == work_order.database_id,
         )
     )
@@ -1234,13 +1234,13 @@ def approve_work_completion_by_board_member(
 #Work order completion reject
 
 @app.post(
-    "/api/work-orders/{work_order_number}/WO-completion/{completion_id}/reject-president",
+    "/api/work-orders/{work_order_number}/WO-completion/{completion_number}/reject-president",
     response_model=WorkCompletionRead,
 )
 
 def reject_work_completion_by_president(
     work_order_number: str,
-    completion_id: int,
+    completion_number: str,
     current_user: User = Depends(require_roles("President")),
     database: Session = Depends(get_db),
 ):
@@ -1259,7 +1259,7 @@ def reject_work_completion_by_president(
 
     completion_record = database.scalar(
         select(WorkCompletion).where(
-            WorkCompletion.database_id == completion_id,
+            WorkCompletion.completion_number == completion_number,
             WorkCompletion.work_order_id == work_order.database_id,
         )
     )
@@ -1302,13 +1302,13 @@ def reject_work_completion_by_president(
     return to_work_order_completion_read(completion_record)
 
 @app.post(
-    "/api/work-orders/{work_order_number}/WO-completion/{completion_id}/reject-treasurer",
+    "/api/work-orders/{work_order_number}/WO-completion/{completion_number}/reject-treasurer",
     response_model=WorkCompletionRead,
 )
 
 def reject_work_completion_by_treasurer(
     work_order_number: str,
-    completion_id: int,
+    completion_number: str,
     current_user: User = Depends(require_roles("Treasurer")),
     database: Session = Depends(get_db),
 ):
@@ -1327,7 +1327,7 @@ def reject_work_completion_by_treasurer(
 
     completion_record = database.scalar(
         select(WorkCompletion).where(
-            WorkCompletion.database_id == completion_id,
+            WorkCompletion.completion_number == completion_number,
             WorkCompletion.work_order_id == work_order.database_id,
         )
     )
@@ -1370,13 +1370,13 @@ def reject_work_completion_by_treasurer(
     return to_work_order_completion_read(completion_record)
 
 @app.post(
-    "/api/work-orders/{work_order_number}/WO-completion/{completion_id}/reject-board-member",
+    "/api/work-orders/{work_order_number}/WO-completion/{completion_number}/reject-board-member",
     response_model=WorkCompletionRead,
 )
 
 def reject_work_completion_by_board_member(
     work_order_number: str,
-    completion_id: int,
+    completion_number: str,
     current_user: User = Depends(require_roles("Board Member")),
     database: Session = Depends(get_db),
 ):
@@ -1395,7 +1395,7 @@ def reject_work_completion_by_board_member(
 
     completion_record = database.scalar(
         select(WorkCompletion).where(
-            WorkCompletion.database_id == completion_id,
+            WorkCompletion.completion_number == completion_number,
             WorkCompletion.work_order_id == work_order.database_id,
         )
     )
