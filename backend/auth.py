@@ -1,12 +1,13 @@
 import os
 
 from dotenv import load_dotenv
+from pathlib import Path
 from fastapi import HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from supabase import create_client
+from supabase.client import ClientOptions
 
-
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
@@ -22,6 +23,21 @@ supabase = create_client(
 
 security = HTTPBearer()
 
+SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
+
+if not SUPABASE_SECRET_KEY:
+    raise RuntimeError("SUPABASE_SECRET_KEY is not configured")
+
+supabase_storage = create_client(
+    SUPABASE_URL,
+    SUPABASE_SECRET_KEY,
+    options=ClientOptions(
+        auto_refresh_token=False,
+        persist_session=False,
+    ),
+)
+
+WORK_ORDER_ATTACHMENTS_BUCKET = "work-order-attachments"
 
 def get_supabase_user(
     credentials: HTTPAuthorizationCredentials = Security(security),

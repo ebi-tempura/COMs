@@ -93,9 +93,38 @@ class WorkOrderRead (WorkOrderCreate):
     "Rejected by Board Member",
     "In Progress",
     "Completed",
+    "Needs Emergency Information"
     ]
 
     model_config = ConfigDict(from_attributes=True)
+
+#######################################
+#######################################
+
+class WorkOrderAttachmentRead(BaseModel):
+    database_id: int
+    work_order_id: int
+    attachment_number: str
+    account_id: str
+    uploaded_by_user_id: int
+    original_filename: str
+    mime_type: str
+    size_bytes: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class WorkOrderAttachmentUploadResult(BaseModel):
+    file_index: int
+    original_filename: str
+    status_code: int
+    error: str | None = None
+    attachment: WorkOrderAttachmentRead | None = None
+
+class WorkOrderAttachmentBatchRead(BaseModel):
+    uploaded_count: int
+    failed_count: int
+    results: list[WorkOrderAttachmentUploadResult]
 
 #######################################
 #######################################

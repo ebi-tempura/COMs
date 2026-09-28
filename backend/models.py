@@ -1,7 +1,7 @@
 from decimal import Decimal
 from datetime import date, datetime, timezone
 
-from sqlalchemy import (Date, DateTime, ForeignKey, Integer, Numeric, String)
+from sqlalchemy import (Date, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint, CheckConstraint, Index)
 from sqlalchemy.orm import Mapped, mapped_column,relationship
 
 from database import Base
@@ -70,7 +70,30 @@ class User (Base):
     
 class WorkOrder(Base):
     __tablename__ = "work_orders"
-    __table_args__ = {"sqlite_autoincrement": True}
+    __table_args__ = (
+        CheckConstraint(
+            "amount > 0",
+            name="ck_work_orders_amount_positive",
+        ),
+        CheckConstraint(
+            "priority IN ('Low', 'Medium', 'High')",
+            name="ck_work_orders_priority_valid",
+        ),
+        CheckConstraint(
+            "type IN ('Normal', 'Emergency')",
+            name="ck_work_orders_type_valid",
+        ),
+
+        Index(
+            "ix_work_orders_account_number",
+            "account_id",
+            "work_order_number",
+            unique=True,
+        ),
+        
+        {"sqlite_autoincrement": True},
+
+    )
 
     database_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     account_id: Mapped[str] = mapped_column(ForeignKey("building_account.account_id"),index=True, nullable=False)
@@ -80,14 +103,19 @@ class WorkOrder(Base):
         default = lambda: datetime.now(timezone.utc),
         nullable=False,
     )
-    work_order_number: Mapped[str | None] = mapped_column(
-    String(20), 
-    unique=True,
-    index=True,
-    nullable=True,
+    work_order_number: Mapped[str] = mapped_column(
+        String(20), 
+        unique=True,
+        index=True,
+        nullable=True,
     )
-    created_year: Mapped[int]
+    created_by_user_id: Mapped[int] = mapped_column(
+        ForeignKey("User_table.database_id"),
+        nullable=False,
+        index=True,
+    )
 
+    created_year: Mapped[int]
     title: Mapped[str] = mapped_column(String(200),nullable=False,)
     supplier: Mapped[str] = mapped_column(String(200),nullable=False,)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2),nullable=False,)
@@ -103,13 +131,13 @@ class WorkOrder(Base):
     category: Mapped[str] =mapped_column(String(100), nullable= False,)
     location:  Mapped[str] =mapped_column(String(200), nullable= False,)
     target_date:  Mapped[date] =mapped_column(Date, nullable= False,)
+    last_attachment_sequence: Mapped[int] = mapped_column (Integer, default=0, server_default="0", nullable= False)
+
 
 #Reverse relationships
 
     building_account:Mapped ["BuildingAccount"] = relationship(back_populates= "work_orders")   
     #
-    created_by_user_id: Mapped[int] = mapped_column(ForeignKey("User_table.database_id"),
-                                                    nullable=True,index=True,)
     created_by_user:Mapped ["User"] = relationship(back_populates= "created_work_orders",
                                                     foreign_keys=[created_by_user_id],)
     #
@@ -145,6 +173,29 @@ class WorkCompletion(Base):
 
     #building_account:Mapped ["BuildingAccount"] = relationship(back_populates= "work_order_completions")   
 
+class WorkOrderAttachment(Base):
+    __tablename__ = "work_order_attachments"
+
+    __table_args__ = (
+        CheckConstraint("size_bytes > 0", name="ck_work_order_attachments_size_positive"),
+        CheckConstraint("mime_type IN ('application/pdf', 'image/jpeg', 'image/png')", name="ck_work_order_attachments_mime_type_valid"),
+        {"sqlite_autoincrement": True},
+    )
+
+    database_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    attachment_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    work_order_id: Mapped[int] = mapped_column(ForeignKey("work_orders.database_id"), nullable=False, index=True)
+    account_id: Mapped[str] = mapped_column(ForeignKey("building_account.account_id"), nullable=False, index=True)
+    uploaded_by_user_id: Mapped[int] = mapped_column(ForeignKey("User_table.database_id"), nullable=False, index=True)
+    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    storage_path: Mapped[str] = mapped_column(String(1024), unique=True, nullable=False)
+    mime_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True,index=True,)
+    deleted_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("User_table.database_id"), nullable=True, index=True,)
+
 class EmergencyWorkOrder(Base):
 
     __tablename__ = "work_order_emergency"
@@ -176,12 +227,22 @@ class EmergencyWorkOrder(Base):
 class Supplier(Base):
 
     __tablename__ = "suppliers"
-    __table_args__= {"sqlite_autoincrement": True}
+    __table_args__ = (
+        UniqueConstraint("account_id", "rfc", name="uq_suppliers_account_rfc"),
+        UniqueConstraint("account_id", "clabe", name="uq_suppliers_account_clabe"),
+        Index(
+                    "ix_work_orders_supplier_id",
+                    "account_id",
+                    "supplier_id",
+                    unique=True,
+                ),
 
+    {"sqlite_autoincrement": True},
+    )
     database_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     account_id: Mapped[str] = mapped_column(ForeignKey("building_account.account_id"),index=True, nullable=False)
     status: Mapped[str] = mapped_column(String(50), default="Draft", server_default="Draft", nullable=False,)
-    created_by_user_id: Mapped[int|None] = mapped_column(ForeignKey("User_table.database_id"),   nullable=True, index=True,)
+    created_by_user_id: Mapped[int] = mapped_column(ForeignKey("User_table.database_id"),   nullable=False, index=True,)
     created_at: Mapped [datetime] = mapped_column (
         DateTime(timezone=True), 
         default = lambda: datetime.now(timezone.utc),
@@ -193,10 +254,10 @@ class Supplier(Base):
     service_category: Mapped[str] = mapped_column(String(200), nullable = False,)
     contact: Mapped[str] = mapped_column(String(200), nullable = False,)
     phone: Mapped[str] = mapped_column(String(30), nullable = False,)
-    email: Mapped[str] = mapped_column(String(200), unique= True, nullable = False,)
-    rfc: Mapped[str] = mapped_column(String(13), unique=True, nullable = False,)
+    email: Mapped[str] = mapped_column(String(200), nullable = False,)
+    rfc: Mapped[str] = mapped_column(String(13), nullable = False,)
     address: Mapped[str] = mapped_column(String(500), nullable = False,)
-    clabe: Mapped[str] = mapped_column( String(18),unique=True,nullable=False,)
+    clabe: Mapped[str] = mapped_column( String(18),nullable=False,)
     payment_method: Mapped[str] = mapped_column(String(200), nullable = False,)
     notes: Mapped[str | None] = mapped_column(String(2000), nullable = True,)
 
@@ -224,6 +285,7 @@ class AuditLog(Base):
     record_id: Mapped[str] = mapped_column(String(50), nullable = False,)
     details: Mapped[str] = mapped_column(String(2000), nullable = False,)
     user_id: Mapped[str] = mapped_column(String(50), nullable = False,)    
+    work_order_id: Mapped[int | None] = mapped_column(ForeignKey("work_orders.database_id"), nullable=True, index=True)
 
     #Reverse relationships
 
