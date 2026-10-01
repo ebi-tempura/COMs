@@ -17,6 +17,7 @@ from routers.work_orders import router as work_orders_router
 from routers.work_orders_com_eme import router as work_orders_com_eme_router
 from routers.purchase_orders import router as purchase_order_router
 from routers.audit import router as audit_router
+from routers.purchase_orders_attachments import router as purchase_orders_attachment_router
 
 app = FastAPI(title="COMS API")
 
@@ -73,3 +74,4 @@ app.include_router(work_orders_com_eme_router)
 app.include_router(attachment_router)
 app.include_router(purchase_order_router)
 app.include_router(audit_router)
+app.include_router(purchase_orders_attachment_router)
