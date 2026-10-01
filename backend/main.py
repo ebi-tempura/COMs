@@ -6,15 +6,17 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import User
+from users import router as users_router
+
 from auth import get_supabase_user
 
 from routers.attachments import router as attachment_router
-from routers.audit import router as audit_router
 from routers.building_account import router as building_account_router
 from routers.suppliers import router as supplier_router
-from users import router as users_router
 from routers.work_orders import router as work_orders_router
 from routers.work_orders_com_eme import router as work_orders_com_eme_router
+from routers.purchase_orders import router as purchase_order_router
+from routers.audit import router as audit_router
 
 app = FastAPI(title="COMS API")
 
@@ -69,4 +71,5 @@ app.include_router(supplier_router)
 app.include_router(work_orders_router)
 app.include_router(work_orders_com_eme_router)
 app.include_router(attachment_router)
+app.include_router(purchase_order_router)
 app.include_router(audit_router)

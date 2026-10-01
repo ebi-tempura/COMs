@@ -1,7 +1,6 @@
 import logging
 import inspect
 
-
 from datetime import datetime, timezone
 from fastapi import Depends, HTTPException, File, UploadFile, Response, APIRouter
 
@@ -22,7 +21,10 @@ from schemas import (WorkOrderAttachmentRead, WorkOrderAttachmentBatchRead,
 
 from auth import  supabase_storage,WORK_ORDER_ATTACHMENTS_BUCKET
 
-router = APIRouter()
+router = APIRouter(   
+    prefix="/api/attachments",
+    tags=["WO Attachments"],
+)
 
 attachment_logger = logging.getLogger(__name__)
 

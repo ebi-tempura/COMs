@@ -61,43 +61,56 @@ class UserRead (BaseModel):
 
 class WorkOrderCreate(BaseModel):
 
-    #account_id: str = Field(min_length=1, max_length=50)
-    #
-    title: str = Field(min_length =1, max_length = 200,)
-    supplier: str = Field(min_length =1, max_length = 200,)         
-    amount: Decimal = Field(gt =0)
-    priority: Literal ["Low","Medium","High"]
-    type: Literal ["Normal", "Emergency"]
-    category: str = Field (min_length=1, max_length=100,)
-    location: str  = Field ( min_length=1, max_length=100,)
-    description: str = Field (min_length=1, max_length = 2000,)
+    title: str = Field(min_length=1, max_length=200)
+    # Human/API reference, e.g. SUP-2026-0004
+    supplier_id: str = Field(min_length=1, max_length=20)
+    amount: Decimal = Field(gt=0)
+    priority: Literal["Low", "Medium", "High"]
+    type: Literal["Normal", "Emergency"]
+    category: str = Field(min_length=1, max_length=100)
+    location: str = Field(min_length=1, max_length=100)
+    description: str = Field(min_length=1, max_length=2000)
     target_date: date
 
-class WorkOrderRead (WorkOrderCreate):
+class WorkOrderRead(BaseModel):
 
     database_id: int
     account_id: str
-    work_order_number:str
-    created_by_user_id:int | None = None
-    #
-    created_at: datetime = None
+    work_order_number: str
+    created_by_user_id: int | None = None
+
+    title: str
+
+    # What the API exposes
+    supplier_id: str
+    supplier_name: str
+
+    amount: Decimal
+    priority: Literal["Low", "Medium", "High"]
+    type: Literal["Normal", "Emergency"]
+    category: str
+    location: str
+    description: str
+    target_date: date
+
+    created_at: datetime | None = None
+
     status: Literal[
-    "Draft",
-    "Pending President Approval",
-    "Pending Treasurer Approval",
-    "Pending Board Member Approval",
-    "Approved",
-    "Rejected",
-    "Rejected by President",
-    "Rejected by Treasurer",
-    "Rejected by Board Member",
-    "In Progress",
-    "Completed",
-    "Needs Emergency Information"
+        "Draft",
+        "Pending President Approval",
+        "Pending Treasurer Approval",
+        "Pending Board Member Approval",
+        "Approved",
+        "Rejected",
+        "Rejected by President",
+        "Rejected by Treasurer",
+        "Rejected by Board Member",
+        "In Progress",
+        "Completed",
+        "Needs Emergency Information",
     ]
 
     model_config = ConfigDict(from_attributes=True)
-
 #######################################
 #######################################
 
@@ -229,3 +242,63 @@ class AuditLogRead (AuditLogCreate):
     details: str
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+#######################################
+#######################################
+
+class PurchaseOrderCreate(BaseModel):
+    work_order_number: str | None= None
+    supplier_id: str = Field(min_length=1)
+    title:str = Field(min_length=1, max_length=200)
+    description: str = Field(min_length=1)
+    amount: Decimal = Field(
+        gt=0,
+        max_digits=12,
+        decimal_places=2,
+    )
+    priority: Literal ["Low","Medium","High"]
+
+class PurchaseOrderReject(BaseModel):
+    comment: str = Field(min_length=1)
+
+class PurchaseOrderRead(BaseModel):
+    database_id: int
+    account_id: str
+    purchase_order_number: str
+    title: str
+    created_year: int
+    work_order_number: str | None
+    supplier_id: str
+    description: str
+    amount: Decimal
+    status: str
+    created_at: datetime
+    created_by_user_id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+class PurchaseOrderAttachmentRead(BaseModel):
+    database_id: int
+    attachment_number: str
+    purchase_order_id: int
+    account_id: str
+    uploaded_by_user_id: int
+    original_filename: str
+    mime_type: str
+    size_bytes: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class PurchaseOrderAttachmentUploadResult(BaseModel):
+    file_index: int
+    original_filename: str
+    status_code: int
+    error: str | None = None
+    attachment: PurchaseOrderAttachmentRead | None = None
+
+class PurchaseOrderAttachmentBatchRead(BaseModel):
+    uploaded_count: int
+    failed_count: int
+    results: list[PurchaseOrderAttachmentUploadResult]
+

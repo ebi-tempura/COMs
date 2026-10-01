@@ -16,7 +16,9 @@ from schemas import (
 
 from auth import get_supabase_user
 
-router = APIRouter()
+router = APIRouter(   
+    prefix="/api/work_order_comp_eme",
+    tags=["WO Competition and Emergency"],)
 
 def to_work_emergency_read(record: EmergencyWorkOrder) -> WorkEmergencyRead:
 

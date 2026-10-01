@@ -20,7 +20,10 @@ from schemas import (
 
 from auth import get_supabase_user
 
-router = APIRouter()
+router = APIRouter(    
+    prefix="/api/suppliers",
+    tags=["Suppliers"],
+    )
 
 audit_logger = logging.getLogger(__name__)
 

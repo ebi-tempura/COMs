@@ -15,7 +15,10 @@ from schemas import ( AuditLogRead )
 from fastapi import APIRouter
 from users import require_roles
 
-router = APIRouter()
+router = APIRouter( 
+    prefix="/api/audit",
+    tags=["Audit"],
+)
 
 audit_logger = logging.getLogger(__name__)
 

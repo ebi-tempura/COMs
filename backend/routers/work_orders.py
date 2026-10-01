@@ -9,26 +9,29 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from users import require_roles
-from models import ( User,
-                    WorkOrder,AuditLog, )
+from models import User, WorkOrder, Supplier, AuditLog
 from schemas import  WorkOrderCreate, WorkOrderRead
 from users import get_current_user
 
-router = APIRouter()
+router = APIRouter(    
+    prefix="/api/work_orders",
+    tags=["Work Orders"],
+    )
 
 audit_logger = logging.getLogger(__name__)
 
 
 def to_work_order_read(record: WorkOrder) -> WorkOrderRead:
+    
     return WorkOrderRead(
         database_id=record.database_id,
         account_id=record.account_id,
         created_by_user_id=record.created_by_user_id,
         work_order_number=record.work_order_number,
-        #
         status=record.status,
         title=record.title,
-        supplier=record.supplier,
+        supplier_id=record.supplier_record.supplier_id,
+        supplier_name=record.supplier_record.supplier_name,
         amount=record.amount,
         priority=record.priority,
         type=record.type,
@@ -36,6 +39,7 @@ def to_work_order_read(record: WorkOrder) -> WorkOrderRead:
         location=record.location,
         target_date=record.target_date,
         description=record.description,
+        created_at=record.created_at,
     )
 
 @router.post(
@@ -50,13 +54,27 @@ def create_work_order(
     database: Session = Depends(get_db),
 ):
 
-    record = WorkOrder(
+    supplier = database.scalar(
+    select(Supplier).where(
+        Supplier.supplier_id == work_order.supplier_id,
+        Supplier.account_id == current_user.account_id,
+    )
+)
 
+    if supplier is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Supplier not found",
+        )
+    
+    record = WorkOrder(
         account_id=current_user.account_id,
         status="Draft",
         created_year=datetime.now().year,
         title=work_order.title,
-        supplier=work_order.supplier,
+
+        supplier_database_id=supplier.database_id,
+
         amount=work_order.amount,
         priority=work_order.priority,
         type=work_order.type,
@@ -66,7 +84,6 @@ def create_work_order(
         target_date=work_order.target_date,
         created_by_user_id=current_user.database_id,
     )
-
     database.add(record)
     database.flush()
 

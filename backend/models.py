@@ -1,7 +1,9 @@
 from decimal import Decimal
 from datetime import date, datetime, timezone
 
-from sqlalchemy import (Date, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint, CheckConstraint, Index)
+from sqlalchemy import (Text, Date, DateTime, ForeignKey, Integer, Numeric, String, 
+                        UniqueConstraint, CheckConstraint, PrimaryKeyConstraint, ForeignKeyConstraint, Index)
+
 from sqlalchemy.orm import Mapped, mapped_column,relationship
 
 from database import Base
@@ -114,10 +116,10 @@ class WorkOrder(Base):
         nullable=False,
         index=True,
     )
-
+    purchase_orders: Mapped[list["PurchaseOrder"]] = relationship(back_populates="work_order",foreign_keys="PurchaseOrder.work_order_id",)
     created_year: Mapped[int]
     title: Mapped[str] = mapped_column(String(200),nullable=False,)
-    supplier: Mapped[str] = mapped_column(String(200),nullable=False,)
+    supplier_database_id: Mapped[int] = mapped_column(ForeignKey("suppliers.database_id"), nullable=False, index=True,)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2),nullable=False,)
     priority: Mapped[str] = mapped_column(String(20),nullable=False,)
     status: Mapped[str] = mapped_column(
@@ -137,10 +139,11 @@ class WorkOrder(Base):
 #Reverse relationships
 
     building_account:Mapped ["BuildingAccount"] = relationship(back_populates= "work_orders")   
-    #
+    
     created_by_user:Mapped ["User"] = relationship(back_populates= "created_work_orders",
                                                     foreign_keys=[created_by_user_id],)
-    #
+
+    supplier_record: Mapped["Supplier"] = relationship( back_populates="work_orders",foreign_keys=[supplier_database_id],)
 
 class WorkCompletion(Base):
 
@@ -231,7 +234,7 @@ class Supplier(Base):
         UniqueConstraint("account_id", "rfc", name="uq_suppliers_account_rfc"),
         UniqueConstraint("account_id", "clabe", name="uq_suppliers_account_clabe"),
         Index(
-                    "ix_work_orders_supplier_id",
+                    "ix_suppliers_account_supplier_id",
                     "account_id",
                     "supplier_id",
                     unique=True,
@@ -248,9 +251,10 @@ class Supplier(Base):
         default = lambda: datetime.now(timezone.utc),
         nullable=False,
     )
-    supplier_id: Mapped[str| None] = mapped_column( String(20),unique=True,index=True, nullable=True,)    
+    supplier_id: Mapped[str| None] = mapped_column( String(20), nullable=True,)    
     supplier_type: Mapped[str] = mapped_column(String(200), nullable = False,)
     supplier_name: Mapped[str] = mapped_column(String(200), nullable = False,)
+    purchase_orders: Mapped[list["PurchaseOrder"]] = relationship(back_populates="supplier_record",foreign_keys="PurchaseOrder.supplier_database_id",)
     service_category: Mapped[str] = mapped_column(String(200), nullable = False,)
     contact: Mapped[str] = mapped_column(String(200), nullable = False,)
     phone: Mapped[str] = mapped_column(String(30), nullable = False,)
@@ -258,6 +262,7 @@ class Supplier(Base):
     rfc: Mapped[str] = mapped_column(String(13), nullable = False,)
     address: Mapped[str] = mapped_column(String(500), nullable = False,)
     clabe: Mapped[str] = mapped_column( String(18),nullable=False,)
+    work_orders: Mapped[list["WorkOrder"]] = relationship(back_populates="supplier_record",   foreign_keys="WorkOrder.supplier_database_id",)
     payment_method: Mapped[str] = mapped_column(String(200), nullable = False,)
     notes: Mapped[str | None] = mapped_column(String(2000), nullable = True,)
 
@@ -265,6 +270,256 @@ class Supplier(Base):
 
     building_account:Mapped ["BuildingAccount"] = relationship(back_populates= "suppliers")
 
+Index(
+    "uq_suppliers_account_database_id",
+    Supplier.account_id,
+    Supplier.database_id,
+    unique=True,
+)
+
+Index(
+    "uq_work_orders_account_database_id",
+    WorkOrder.account_id,
+    WorkOrder.database_id,
+    unique=True,
+)
+
+Index(
+    "uq_users_account_database_id",
+    User.account_id,
+    User.database_id,
+    unique=True,
+)
+
+class PurchaseOrderSequence(Base):
+    __tablename__ = "purchase_order_sequences"
+    __table_args__ = (
+        PrimaryKeyConstraint(
+            "account_id",
+            "created_year",
+            name="pk_purchase_order_sequences",
+        ),
+        CheckConstraint(
+            "last_number >= 0",
+            name="ck_purchase_order_sequences_last_number",
+        ),
+    )
+
+    account_id: Mapped[str] = mapped_column(
+        ForeignKey("building_account.account_id"),
+        nullable=False,
+    )
+    created_year: Mapped[int] = mapped_column(Integer, nullable=False)
+    last_number: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+    )
+
+class PurchaseOrder(Base):
+
+    __tablename__ = "purchase_orders"
+
+    __table_args__ = (
+        CheckConstraint(
+            "amount > 0",
+            name="ck_purchase_orders_amount_positive",
+        ),
+        CheckConstraint(
+            "priority IN ('Low', 'Medium', 'High')",
+            name="ck_purchase_orders_priority_valid",
+        ),
+        CheckConstraint(
+            "status IN (,"
+            "'Draft', "
+            "'Pending President Approval', "
+            "'Pending Treasurer Approval', "
+            "'Pending Board Member Approval', "
+            "'Approved', "
+            "'Rejected by President', "
+            "'Rejected by Treasurer', "
+            "'Rejected by Board Member'"
+            ")",
+            name="ck_purchase_orders_status_valid",
+        ),
+        UniqueConstraint(
+            "account_id",
+            "purchase_order_number",
+            name="uq_purchase_orders_account_number",
+        ),
+        {"sqlite_autoincrement": True},
+    )
+
+    database_id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+    )
+
+    account_id: Mapped[str] = mapped_column(
+        ForeignKey("building_account.account_id"),
+        nullable=False,
+        index=True,
+    )
+
+    purchase_order_number: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+    )
+
+    created_year: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
+
+    # Supplier is REQUIRED
+    supplier_database_id: Mapped[int] = mapped_column(
+        ForeignKey("suppliers.database_id"),
+        nullable=False,
+        index=True,
+    )
+
+    supplier_record: Mapped["Supplier"] = relationship(
+    back_populates="purchase_orders",
+    foreign_keys=[supplier_database_id],
+    )
+
+    # Work Order is OPTIONAL
+    work_order_id: Mapped[int | None] = mapped_column(
+        ForeignKey("work_orders.database_id"),
+        nullable=True,
+        index=True,
+    )
+
+    work_order: Mapped["WorkOrder | None"] = relationship(
+    back_populates="purchase_orders",
+    foreign_keys=[work_order_id],
+    )
+
+    title: Mapped[str] = mapped_column(
+        String(200),
+        nullable=False,
+    )
+
+    description: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    amount: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2),
+        nullable=False,
+    )
+
+    priority: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="Medium",
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        default="Draft",
+    )
+
+    created_by_user_id: Mapped[int] = mapped_column(
+        ForeignKey("User_table.database_id"),
+        nullable=False,
+        index=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    
+    last_attachment_sequence: Mapped[int] = mapped_column(
+    Integer,
+    default=0,
+    server_default="0",
+    nullable=False,
+)
+
+class PurchaseOrderAttachment(Base):
+    __tablename__ = "purchase_order_attachments"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "account_id",
+            "attachment_number",
+            name="uq_po_attachments_account_number",
+        ),
+        CheckConstraint(
+            "size_bytes > 0",
+            name="ck_po_attachments_size_positive",
+        ),
+        CheckConstraint(
+            "mime_type IN "
+            "('application/pdf', 'image/jpeg', 'image/png')",
+            name="ck_po_attachments_mime_type_valid",
+        ),
+        {"sqlite_autoincrement": True},
+    )
+
+    database_id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+    )
+    attachment_number: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+    purchase_order_id: Mapped[int] = mapped_column(
+        ForeignKey("purchase_orders.database_id"),
+        nullable=False,
+        index=True,
+    )
+    account_id: Mapped[str] = mapped_column(
+        ForeignKey("building_account.account_id"),
+        nullable=False,
+        index=True,
+    )
+    uploaded_by_user_id: Mapped[int] = mapped_column(
+        ForeignKey("User_table.database_id"),
+        nullable=False,
+        index=True,
+    )
+    original_filename: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+    )
+    storage_path: Mapped[str] = mapped_column(
+        String(1024),
+        unique=True,
+        nullable=False,
+    )
+    mime_type: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+    )
+    size_bytes: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
+    deleted_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("User_table.database_id"),
+        nullable=True,
+        index=True,
+    )
+    
 class AuditLog(Base): 
 
     __tablename__ = "audit_trail"
@@ -290,4 +545,3 @@ class AuditLog(Base):
     #Reverse relationships
 
     building_account:Mapped ["BuildingAccount"] = relationship(back_populates= "audit_trails")    
-    

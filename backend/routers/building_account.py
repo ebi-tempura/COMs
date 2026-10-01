@@ -7,7 +7,10 @@ from database import get_db
 from models import BuildingAccount
 from schemas import BuildingAccountCreate, BuildingAccountRead
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/api/building_account",
+    tags=["Building Account"],
+)
 
 def to_building_account_read(record: BuildingAccount) ->BuildingAccountRead:
     return BuildingAccountRead(
