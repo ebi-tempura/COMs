@@ -164,7 +164,12 @@ def submit_work_order(
             detail="Only Work Order creator can submit it",
         )
 
-    work_order.status = "Pending President Approval"
+    is_emergency = work_order.type == "Emergency"
+    work_order.status = (
+        "In Progress"
+        if is_emergency
+        else "Pending President Approval"
+    )
 
     audit_record = AuditLog(
         account_id=current_user.account_id,
@@ -174,7 +179,12 @@ def submit_work_order(
         action="Submitted work order",
         table_name="work_orders",
         record_id=work_order.work_order_number,
-        details=f"Work order submitted by {current_user.user_role}",
+        details=(
+            f"Emergency work order submitted by {current_user.user_role}; "
+            "initial approvals bypassed; ready for work completion"
+            if is_emergency
+            else f"Work order submitted by {current_user.user_role}"
+        ),
         )
 
     database.add(audit_record)
