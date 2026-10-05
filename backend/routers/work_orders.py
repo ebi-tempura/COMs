@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from users import require_roles
-from models import User, WorkOrder, Supplier, AuditLog
+from models import EmergencyWorkOrder, User, WorkOrder, Supplier, AuditLog
 from schemas import  WorkOrderCreate, WorkOrderRead
 from users import get_current_user
 
@@ -164,12 +164,11 @@ def submit_work_order(
             detail="Only Work Order creator can submit it",
         )
 
-    is_emergency = work_order.type == "Emergency"
-    work_order.status = (
-        "In Progress"
-        if is_emergency
-        else "Pending President Approval"
-    )
+
+    if work_order.type == "Emergency":
+        work_order.status = "Needs Emergency Information"
+    else:
+        work_order.status = "Pending President Approval"
 
     audit_record = AuditLog(
         account_id=current_user.account_id,
@@ -182,10 +181,9 @@ def submit_work_order(
         details=(
             f"Emergency work order submitted by {current_user.user_role}; "
             "initial approvals bypassed; ready for work completion"
-            if is_emergency
+            if work_order.type == "Emergency"
             else f"Work order submitted by {current_user.user_role}"
-        ),
-        )
+        ),        )
 
     database.add(audit_record)
     database.commit()
@@ -330,6 +328,15 @@ def approve_work_order_by_board_member(
         )
     )
 
+    work_orders_emergency = database.scalar(
+        select(EmergencyWorkOrder).where(
+            EmergencyWorkOrder.work_order_id == work_order.database_id,
+        )
+        .order_by(EmergencyWorkOrder.database_id.desc())
+        .limit(1)
+    )
+
+
     if work_order is None:
         raise HTTPException(
             status_code=404,
@@ -351,11 +358,17 @@ def approve_work_order_by_board_member(
     is_emergency = (
         work_order.type == "Emergency"
     )
-    
+
     if is_emergency:
-        work_order.status = "Needs emergency information"
+        if (
+            work_orders_emergency is None
+            or work_orders_emergency.status != "Submitted"
+        ):
+            work_order.status = "Needs Emergency Information"
+        else:
+            work_order.status = "Approved"
     else:
-        work_order.status = "In Progress"
+        work_order.status = "Approved"
 
     audit_record = AuditLog(
                 account_id=current_user.account_id,
@@ -465,6 +478,8 @@ def reject_work_order_by_treasurer(
             status_code=403,
             detail="The Work Order creator cannot approve it"
         )
+    
+    work_order.status = "Rejected by Treasurer"
 
     audit_record = AuditLog(
         account_id=current_user.account_id,

@@ -105,7 +105,7 @@ def create_work_emergency(
     database.add(record)
     database.flush()
 
-    work_order.status = "In Progress"
+    work_order.status = "Pending President Approval"
     audit_record = AuditLog(
         account_id=current_user.account_id,
         user_id=current_user.auth_user_id,
@@ -123,8 +123,6 @@ def create_work_emergency(
     database.refresh(record)
 
     return to_work_emergency_read (record)
-
-### Read work emergency ###
 
 @router.get(
     "/api/work-orders/{work_order_number}/WO-emergency",
@@ -164,7 +162,6 @@ def read_work_emergency(
             )
 
     records = database.scalars(statement).all()
-
 
     return[
         to_work_emergency_read (record)
