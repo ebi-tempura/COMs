@@ -22,7 +22,7 @@ function Login({ setUserEmail }) {
       console.error("LOGIN ERROR:", error);
       return;
     }
-    console.log("ACCESS TOKEN:", data.session.access_token);
+
 
     const response = await fetch("http://127.0.0.1:8000/api/me", {
       method: "GET",
@@ -106,7 +106,7 @@ console.log("WORK ORDERS:", workOrders);
             {t("login.signIn")}
           </button>
 
-          <button className="button.secondarybutton" onClick={() => navigate("/register")}>
+          <button type="button" className="button.secondarybutton" onClick={() => navigate("/register")}>
             {t("login.signUp")}
           </button>
 

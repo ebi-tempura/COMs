@@ -1,3 +1,5 @@
+import Users from "./pages/Users/Users";
+import AcceptInvitation from "./pages/Users/AcceptInvitation";
 
 /**********************/
 
@@ -32,6 +34,8 @@ function App() {
       </div>
 
       <Routes>
+        <Route path="/accept-invitation" element={<AcceptInvitation />} />
+        <Route path="/users" element={<Users />} />
         <Route path="/register" element={<Register setUserEmail={setUserEmail} setName={setName} />} />
         
         <Route path="/login" element={<Login setUserEmail={setUserEmail} />} />
@@ -64,7 +68,7 @@ function App() {
           />
           <Route
             path="/settings"
-            element={<PlaceholderPage translationKey="placeholders.settings" />}
+            element={<Users />}
           />
         </Route>
       </Routes>

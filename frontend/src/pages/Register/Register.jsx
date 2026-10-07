@@ -1,3 +1,5 @@
+import { supabase } from "../../lib/supabaseClient";
+import { api } from "../../lib/api";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../../i18n/LanguageContext";
@@ -6,16 +8,23 @@ const Register = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
 
-  const [step, setStep] = useState(1);
+  const [draft] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem('comsRegistration') || '{}'); }
+    catch { return {}; }
+  });
+  const [step, setStep] = useState(draft.account_name ? 2 : 1);
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [confirmationPending, setConfirmationPending] = useState(Boolean(draft.account_name));
 
-  const [accountName, setAccountName] = useState("");
-  const [buildingName, setBuildingName] = useState("");
-  const [buildingAddress, setBuildingAddress] = useState("");
 
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
+  const [accountName, setAccountName] = useState(draft.account_name || "");
+  const [buildingName, setBuildingName] = useState(draft.building_name || "");
+  const [buildingAddress, setBuildingAddress] = useState(draft.building_address || "");
+
+  const [firstName, setFirstName] = useState(draft.first_name || "");
+  const [lastName, setLastName] = useState(draft.last_name || "");
+  const [email, setEmail] = useState(draft.email || "");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -29,7 +38,7 @@ const Register = () => {
     setStep(2);
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     if (!firstName || !lastName || !email || !password || !confirmPassword) {
@@ -49,17 +58,33 @@ const Register = () => {
 
     setError("");
 
-    // Later, this is where we call POST /api/register.
-    console.log({
-      accountName,
-      buildingName,
-      buildingAddress,
-      firstName,
-      lastName,
-      email,
-    });
+    setBusy(true);
+    try {
+      const registration = { account_name: accountName, building_name: buildingName,
+        building_address: buildingAddress, first_name: firstName, last_name: lastName,
+        user_name: `${firstName} ${lastName}`.trim().slice(0, 50) };
+      sessionStorage.setItem("comsRegistration", JSON.stringify({ ...registration, email }));
+      const { data: { session } } = await supabase.auth.getSession();
+      let activeSession = session;
+      if (session && session.user.email?.toLowerCase() !== email.trim().toLowerCase()) {
+        throw new Error('Sign out of your existing account before registering another identity.');
+      }
+      if (!activeSession) {
+        const { data, error: signupError } = await supabase.auth.signUp({ email, password,
+          options: { emailRedirectTo: `${window.location.origin}/register` } });
+        if (signupError) throw signupError;
+        activeSession = data.session;
+      }
+      if (!activeSession) {
+        setConfirmationPending(true);
+        setError('Confirm your email, then return here and sign in to finish registration. Your building has not been created yet.');
+        return;
+      }
+      await api('/api/register', { method: 'POST', body: JSON.stringify(registration) });
+      sessionStorage.removeItem("comsRegistration");
+      setStep(3);
+    } catch (e) { setError(e.message); } finally { setBusy(false); }
 
-    setStep(3);
   };
 
   return (
@@ -170,12 +195,21 @@ const Register = () => {
                 />
               </label>
 
+              {confirmationPending && <button type="button" disabled={busy} onClick={async () => {
+                setBusy(true);
+                try {
+                  const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+                  if (loginError) throw loginError;
+                  setConfirmationPending(false);
+                  setError('Email confirmed. Click Create building account to finish.');
+                } catch (e) { setError(e.message); } finally { setBusy(false); }
+              }}>Sign in after confirming email</button>}
               <div className="register-actions">
                 <button type="button" onClick={() => setStep(1)}>
                   Back
                 </button>
 
-                <button className="button" type="submit">
+                <button className="button" type="submit" disabled={busy}>
                   Create building account
                 </button>
               </div>
@@ -186,8 +220,7 @@ const Register = () => {
             <div className="register-step" key="confirmation">
               <h2>Building account created</h2>
               <p>
-                Thank you. Please check your email to confirm your COMS
-                administrator account.
+                Your building account and first Admin are ready. You can now sign in to COMs.
               </p>
 
               <button type="button" onClick={() => navigate("/login")}>
