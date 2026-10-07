@@ -559,6 +559,7 @@ def delete_work_order_attachment(
 
     audit_record = AuditLog(
         account_id=current_user.account_id,
+        work_order_id=work_order.database_id,
         user_id=current_user.auth_user_id,
         user_name=f"{current_user.first_name} {current_user.last_name}",
         user_role=current_user.user_role,
