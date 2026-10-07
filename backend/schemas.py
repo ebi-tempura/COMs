@@ -302,3 +302,36 @@ class PurchaseOrderAttachmentBatchRead(BaseModel):
     failed_count: int
     results: list[PurchaseOrderAttachmentUploadResult]
 
+
+
+# Account onboarding never accepts tenant IDs, roles or authentication IDs.
+UserRole = Literal["Resident", "Staff", "Manager", "President", "Board Member", "Treasurer", "Admin"]
+
+class AccountRegistration(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    account_name: str = Field(min_length=1, max_length=200)
+    building_name: str = Field(min_length=1, max_length=200)
+    building_address: str = Field(min_length=1, max_length=200)
+    first_name: str = Field(min_length=1, max_length=50)
+    last_name: str = Field(min_length=1, max_length=50)
+    user_name: str = Field(min_length=1, max_length=50)
+
+class UserInvitationCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    email: str = Field(min_length=3, max_length=50, pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+    user_role: UserRole
+
+class InvitationAccept(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    token: str = Field(min_length=32, max_length=200)
+    user_name: str = Field(min_length=1, max_length=50)
+    first_name: str = Field(min_length=1, max_length=50)
+    last_name: str = Field(min_length=1, max_length=50)
+
+class UserRoleChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    user_role: UserRole
+
+class UserStatusChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["Active", "Inactive"]

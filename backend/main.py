@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import User
-from users import router as users_router
+from users import router as users_router, get_current_user
 
 from auth import get_supabase_user
 
@@ -40,32 +40,11 @@ def read_root():
     return {"message": "COMS API is running"}
 
 @app.get("/api/me")
-def read_me(
-    supabase_user = Depends(get_supabase_user),
-    database: Session = Depends(get_db),
-):
-    statement = select(User).where(
-        User.auth_user_id == supabase_user.id
-    )
-
-    user = database.scalar(statement)
-
-    if user is None:
-        raise HTTPException(
-            status_code=404,
-            detail="COMS User not found"
-        )
-
-    return{
-        "auth_user_id": supabase_user.id,
-        "email": supabase_user.email,
-        "user_name": user.user_name,
-        "email": user.email,
-        "first_name": user.first_name,
-        "last_name": user.last_name,
-        "user_role": user.user_role,
-        "status": user.status,
-    }
+def read_me(user: User = Depends(get_current_user)):
+    return {"auth_user_id": user.auth_user_id, "account_id": user.account_id,
+            "database_id": user.database_id, "email": user.email,
+            "user_name": user.user_name, "first_name": user.first_name,
+            "last_name": user.last_name, "user_role": user.user_role, "status": user.status}
 
 app.include_router(users_router)
 app.include_router(building_account_router)

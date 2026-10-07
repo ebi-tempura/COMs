@@ -545,3 +545,17 @@ class AuditLog(Base):
     #Reverse relationships
 
     building_account:Mapped ["BuildingAccount"] = relationship(back_populates= "audit_trails")    
+
+
+class UserInvitation(Base):
+    __tablename__ = "user_invitations"
+    database_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[str] = mapped_column(ForeignKey("building_account.account_id"), index=True)
+    email: Mapped[str] = mapped_column(String(50))
+    user_role: Mapped[str] = mapped_column(String(50))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_by_user_id: Mapped[int] = mapped_column(ForeignKey("User_table.database_id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
