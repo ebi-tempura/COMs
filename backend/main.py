@@ -1,15 +1,10 @@
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
-from database import get_db
 from models import User
 from users import router as users_router, get_current_user
 
-from auth import get_supabase_user
-
+from routers.auth import router as auth_router
 from routers.attachments import router as attachment_router
 from routers.building_account import router as building_account_router
 from routers.suppliers import router as supplier_router
@@ -47,6 +42,7 @@ def read_me(user: User = Depends(get_current_user)):
             "last_name": user.last_name, "user_role": user.user_role, "status": user.status}
 
 app.include_router(users_router)
+app.include_router(auth_router)
 app.include_router(building_account_router)
 app.include_router(supplier_router)
 app.include_router(work_orders_router)

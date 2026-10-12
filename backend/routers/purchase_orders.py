@@ -15,7 +15,7 @@ from models import (
     User,
     WorkOrder,
 )
-from schemas import (
+from schemas.purchase_orders import (
     PurchaseOrderCreate,
     PurchaseOrderRead,
     PurchaseOrderReject,

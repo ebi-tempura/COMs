@@ -105,9 +105,7 @@ class WorkOrder(Base):
         default = lambda: datetime.now(timezone.utc),
         nullable=False,
     )
-    work_order_number: Mapped[str] = mapped_column(
-        String(20), 
-        unique=True,
+    work_order_number: Mapped[str] = mapped_column(String(20), 
         index=True,
         nullable=True,
     )
@@ -545,7 +543,6 @@ class AuditLog(Base):
     #Reverse relationships
 
     building_account:Mapped ["BuildingAccount"] = relationship(back_populates= "audit_trails")    
-
 
 class UserInvitation(Base):
     __tablename__ = "user_invitations"

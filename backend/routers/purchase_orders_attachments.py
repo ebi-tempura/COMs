@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from auth import WORK_ORDER_ATTACHMENTS_BUCKET, supabase_storage
 from database import get_db
 from models import AuditLog, PurchaseOrder, PurchaseOrderAttachment, User
-from schemas import (
+from schemas.purchase_orders import (
     PurchaseOrderAttachmentBatchRead,
     PurchaseOrderAttachmentRead,
     PurchaseOrderAttachmentUploadResult,

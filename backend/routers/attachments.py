@@ -16,7 +16,7 @@ from users import require_roles
 from models import ( User,
                     WorkOrder, AuditLog, WorkOrderAttachment)
 
-from schemas import (WorkOrderAttachmentRead, WorkOrderAttachmentBatchRead,
+from schemas.work_orders import (WorkOrderAttachmentRead, WorkOrderAttachmentBatchRead,
                     WorkOrderAttachmentUploadResult)
 
 from auth import  supabase_storage,WORK_ORDER_ATTACHMENTS_BUCKET

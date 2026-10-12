@@ -10,7 +10,7 @@ from models import ( User,
                     WorkOrder,
                     EmergencyWorkOrder, WorkCompletion, AuditLog)
 
-from schemas import ( AuditLogRead )
+from schemas.audit import ( AuditLogRead )
 
 from fastapi import APIRouter
 from users import require_roles

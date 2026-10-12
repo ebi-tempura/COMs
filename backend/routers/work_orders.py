@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from users import require_roles
 from models import EmergencyWorkOrder, User, WorkOrder, Supplier, AuditLog
-from schemas import  WorkOrderCreate, WorkOrderRead
+from schemas.work_orders import  WorkOrderCreate, WorkOrderRead
 from users import get_current_user
 
 router = APIRouter(    

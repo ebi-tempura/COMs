@@ -7,10 +7,19 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import User
-from schemas import UserCreate, UserRead
+from schemas_users import UserRead
 from models import BuildingAccount
 
 from auth import get_supabase_user
+from datetime import datetime, timedelta, timezone
+from hashlib import sha256
+import secrets
+from sqlalchemy import update, func
+from sqlalchemy.exc import IntegrityError
+from models import AuditLog, UserInvitation
+from schemas.auth import UserInvitationCreate, InvitationAccept, UserRoleChange, UserStatusChange
+from routers.building_account import verified_identity
+
 
 
 router = APIRouter()
@@ -63,7 +72,6 @@ def require_roles(*allowed_roles: str):
         return current_user
     return role_checker
 
-
 def to_user_read(record: User) ->UserRead:
     return UserRead(
         database_id=record.database_id,
@@ -81,14 +89,6 @@ def to_user_read(record: User) ->UserRead:
 
 
 # Legacy arbitrary identity creation is replaced by verified invitation acceptance.
-from datetime import datetime, timedelta, timezone
-from hashlib import sha256
-import secrets
-from sqlalchemy import update, func
-from sqlalchemy.exc import IntegrityError
-from models import AuditLog, UserInvitation
-from schemas import (UserInvitationCreate, InvitationAccept, UserRoleChange, UserStatusChange)
-from routers.building_account import verified_identity
 
 router.tags = ["Users"]
 

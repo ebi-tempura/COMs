@@ -10,7 +10,7 @@ from models import ( User,
                     WorkOrder,
                     EmergencyWorkOrder, WorkCompletion, AuditLog)
 
-from schemas import (
+from schemas.work_orders import (
                     WorkCompletionCreate,WorkCompletionRead,
                     WorkEmergencyCreate, WorkEmergencyRead,)
 

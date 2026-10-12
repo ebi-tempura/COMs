@@ -14,7 +14,7 @@ from models import (User,
                     Supplier,
                      AuditLog)
 
-from schemas import (
+from schemas.suppliers import (
                     SupplierCreate, SupplierRead,
                     )
 

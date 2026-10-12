@@ -13,7 +13,7 @@ from sqlalchemy import select, or_, and_
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
-from COMs.backend import database
+#from COMs.backend import database
 from models import (
     WorkOrder,
     BuildingAccount,
@@ -84,6 +84,7 @@ def convert_report_to_pdf(docx_buffer: BytesIO) -> bytes:
                 )
 
             return pdf_content
+
 
 def render_work_order_report(
     context: dict,
