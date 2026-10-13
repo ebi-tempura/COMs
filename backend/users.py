@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import User
-from schemas_users import UserRead
+from schemas.users import UserRead
 from models import BuildingAccount
 
 from auth import get_supabase_user

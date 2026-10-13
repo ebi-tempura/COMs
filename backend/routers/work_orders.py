@@ -7,11 +7,15 @@ from fastapi import Depends, HTTPException, APIRouter
 from sqlalchemy import func, select, Integer, cast, func
 from sqlalchemy.orm import Session
 
+from uuid import uuid4
+
 from database import get_db
 from users import require_roles
 from models import EmergencyWorkOrder, User, WorkOrder, Supplier, AuditLog
 from schemas.work_orders import  WorkOrderCreate, WorkOrderRead
 from users import get_current_user
+from services.notifications.events import NotificationEvent
+from services.notifications.notification_service import create_notifications
 
 router = APIRouter(    
     prefix="/api/work_orders",
@@ -186,6 +190,21 @@ def submit_work_order(
         ),        )
 
     database.add(audit_record)
+    
+    if work_order.type != "Emergency":
+        create_notifications(
+            database=database,
+            account_id=work_order.account_id,
+            event=NotificationEvent.WO_APPROVAL_REQUESTED,
+            event_key=f"wo-submit-{work_order.database_id}-{uuid4().hex}",
+            entity_type="work_order",
+            entity_id=work_order.database_id,
+            reference=work_order.work_order_number,
+            recipient_roles=["President"],
+            exclude_user_id=work_order.created_by_user_id,
+            send_email=True,
+        )
+    
     database.commit()
     database.refresh(work_order)
 
@@ -242,6 +261,20 @@ def approve_work_order_by_president(
             )
     
     database.add(audit_record)
+    
+    create_notifications(
+        database=database,
+        account_id=work_order.account_id,
+        event=NotificationEvent.WO_APPROVAL_REQUESTED,
+        event_key=f"wo-president-approved-{work_order.database_id}-{uuid4().hex}",
+        entity_type="work_order",
+        entity_id=work_order.database_id,
+        reference=work_order.work_order_number,
+        recipient_roles=["Treasurer"],
+        exclude_user_id=work_order.created_by_user_id,
+        send_email=True,
+        )
+    
     database.commit()
     database.refresh(work_order)
 
@@ -306,6 +339,36 @@ def approve_work_order_by_treasurer(
                 )
         
     database.add(audit_record)
+    
+    if needs_board_approval:
+    # Board Member must review the Work Order.
+        create_notifications(
+            database=database,
+            account_id=work_order.account_id,
+            event=NotificationEvent.WO_APPROVAL_REQUESTED,
+            event_key=f"wo-treasurer-approved-{work_order.database_id}-{uuid4().hex}",
+            entity_type="work_order",
+            entity_id=work_order.database_id,
+            reference=work_order.work_order_number,
+            recipient_roles=["Board Member"],
+            exclude_user_id=work_order.created_by_user_id,
+            send_email=True,
+        )
+
+    else:
+            # Final approval: inform the operational team.
+        create_notifications(
+            database=database,
+            account_id=work_order.account_id,
+            event=NotificationEvent.WO_APPROVED,
+            event_key=f"wo-final-approved-{work_order.database_id}-{uuid4().hex}",
+            entity_type="work_order",
+            entity_id=work_order.database_id,
+            reference=work_order.work_order_number,
+            recipient_roles=["Staff", "Manager"],
+            send_email=True,
+        )
+    
     database.commit()
     database.refresh(work_order)
 
@@ -328,6 +391,12 @@ def approve_work_order_by_board_member(
         )
     )
 
+    if work_order is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Work order not found",
+        )
+
     work_orders_emergency = database.scalar(
         select(EmergencyWorkOrder).where(
             EmergencyWorkOrder.work_order_id == work_order.database_id,
@@ -335,13 +404,6 @@ def approve_work_order_by_board_member(
         .order_by(EmergencyWorkOrder.database_id.desc())
         .limit(1)
     )
-
-
-    if work_order is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Work order not found",
-        )
 
     if work_order.status != "Pending Board Member Approval":
         raise HTTPException(
@@ -382,6 +444,19 @@ def approve_work_order_by_board_member(
                 )
         
     database.add(audit_record)
+
+    if work_order.status == "Approved":
+        create_notifications(
+            database=database,
+            account_id=work_order.account_id,
+            event=NotificationEvent.WO_APPROVED,
+            event_key=f"wo-board-approved-{work_order.database_id}-{uuid4().hex}",
+            entity_type="work_order",
+            entity_id=work_order.database_id,
+            reference=work_order.work_order_number,
+            recipient_roles=["Staff", "Manager"],
+            send_email=True,
+        )
 
     database.commit()
     database.refresh(work_order)
@@ -439,6 +514,18 @@ def reject_work_order_by_president(
         )
 
     database.add(audit_record)
+    create_notifications(
+        database=database,
+        account_id=work_order.account_id,
+        event=NotificationEvent.WO_REJECTED,
+        event_key=f"wo-president-rejected-{work_order.database_id}-{uuid4().hex}",
+        entity_type="work_order",
+        entity_id=work_order.database_id,
+        reference=work_order.work_order_number,
+        recipient_roles=["Staff", "Manager"],
+        send_email=True,
+    )
+
     database.commit()
     database.refresh(work_order)
 
@@ -476,7 +563,7 @@ def reject_work_order_by_treasurer(
     if work_order.created_by_user_id == current_user.database_id:
         raise HTTPException(
             status_code=403,
-            detail="The Work Order creator cannot approve it"
+            detail="The Work Order creator cannot rejected it"
         )
     
     work_order.status = "Rejected by Treasurer"
@@ -493,6 +580,19 @@ def reject_work_order_by_treasurer(
         )
 
     database.add(audit_record)
+
+    create_notifications(
+        database=database,
+        account_id=work_order.account_id,
+        event=NotificationEvent.WO_REJECTED,
+        event_key=f"wo-treasurer-rejected-{work_order.database_id}-{uuid4().hex}",
+        entity_type="work_order",
+        entity_id=work_order.database_id,
+        reference=work_order.work_order_number,
+        recipient_roles=["Staff", "Manager"],
+        send_email=True,
+    )
+    
     database.commit()
     database.refresh(work_order)
 
@@ -547,6 +647,19 @@ def reject_work_order_by_board_member(
         )
 
     database.add(audit_record)
+
+    create_notifications(
+        database=database,
+        account_id=work_order.account_id,
+        event=NotificationEvent.WO_REJECTED,
+        event_key=f"wo-board-rejected-{work_order.database_id}-{uuid4().hex}",
+        entity_type="work_order",
+        entity_id=work_order.database_id,
+        reference=work_order.work_order_number,
+        recipient_roles=["Staff", "Manager"],
+        send_email=True,
+    )
+    
     database.commit()
     database.refresh(work_order)
 

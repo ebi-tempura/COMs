@@ -1,4 +1,5 @@
 import sys
+import models_.notifications
 
 from pathlib import Path
 from logging.config import fileConfig

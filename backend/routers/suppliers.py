@@ -2,7 +2,7 @@ import logging
 
 from datetime import datetime
 from fastapi import Depends,HTTPException,APIRouter, APIRouter
-
+from uuid import uuid4
 
 from sqlalchemy import func, select,  Integer, cast, func
 from sqlalchemy.orm import Session
@@ -19,6 +19,9 @@ from schemas.suppliers import (
                     )
 
 from auth import get_supabase_user
+
+from services.notifications.events import NotificationEvent
+from services.notifications.notification_service import create_notifications
 
 router = APIRouter(    
     prefix="/api/suppliers",
@@ -197,6 +200,23 @@ def submit_supplier(
     )
 
     database.add(audit_record)
+
+    create_notifications(
+        database=database,
+        account_id=supplier_record.account_id,
+        event=NotificationEvent.SUPPLIER_APPROVAL_REQUESTED,
+        event_key=f"supplier-submit-{supplier_record.database_id}-{uuid4().hex}",
+        entity_type="supplier",
+        entity_id=supplier_record.database_id,
+        reference=supplier_record.supplier_id,
+        recipient_roles=["President"],
+        exclude_user_id=supplier_record.created_by_user_id,
+        send_email=True,
+    )
+
+    
+    
+    
     database.commit()
     database.refresh(supplier_record)
 
@@ -253,6 +273,20 @@ def approve_supplier_by_president(
     )
 
     database.add(audit_record)
+
+    create_notifications(
+        database=database,
+        account_id=supplier_record.account_id,
+        event=NotificationEvent.SUPPLIER_APPROVAL_REQUESTED,
+        event_key=f"supplier-president-approved-{supplier_record.database_id}-{uuid4().hex}",
+        entity_type="supplier",
+        entity_id=supplier_record.database_id,
+        reference=supplier_record.supplier_id,
+        recipient_roles=["Treasurer"],
+        exclude_user_id=supplier_record.created_by_user_id,
+        send_email=True,
+    )
+    
     database.commit()
     database.refresh(supplier_record)
 
@@ -307,6 +341,20 @@ def approve_supplier_by_treasurer(
     )
 
     database.add(audit_record)
+
+    create_notifications(
+        database=database,
+        account_id=supplier_record.account_id,
+        event=NotificationEvent.SUPPLIER_APPROVAL_REQUESTED,
+        event_key=f"supplier-treasurer-approved-{supplier_record.database_id}-{uuid4().hex}",
+        entity_type="supplier",
+        entity_id=supplier_record.database_id,
+        reference=supplier_record.supplier_id,
+        recipient_roles=["Board Member"],
+        exclude_user_id=supplier_record.created_by_user_id,
+        send_email=True,
+    )
+
     database.commit()
     database.refresh(supplier_record)
 
@@ -361,6 +409,20 @@ def approve_supplier_by_board_member(
     )
 
     database.add(audit_record)
+    
+    create_notifications(
+        database=database,
+        account_id=supplier_record.account_id,
+        event=NotificationEvent.SUPPLIER_APPROVED,
+        event_key=f"supplier-board-approved-{supplier_record.database_id}-{uuid4().hex}",
+        entity_type="supplier",
+        entity_id=supplier_record.database_id,
+        reference=supplier_record.supplier_id,
+        recipient_roles=["Staff", "Manager"],
+        send_email=True,
+    )
+   
+   
     database.commit()
     database.refresh(supplier_record)
 
@@ -388,7 +450,7 @@ def reject_supplier_by_president(
     if supplier_record is None:
         raise HTTPException(
             status_code=404,
-            detail="Work order not found",
+            detail="Supplier not found",
         )
 
     if supplier_record.status != "Pending President Approval":
@@ -417,6 +479,18 @@ def reject_supplier_by_president(
     )
 
     database.add(audit_record)
+
+    create_notifications(
+        database=database,
+        account_id=supplier_record.account_id,
+        event=NotificationEvent.SUPPLIER_REJECTED,
+        event_key=f"supplier-president-rejected-{supplier_record.database_id}-{uuid4().hex}",
+        entity_type="supplier",
+        entity_id=supplier_record.database_id,
+        reference=supplier_record.supplier_id,
+        recipient_roles=["Staff", "Manager"],
+        send_email=True,
+    )
 
     database.commit()
     database.refresh(supplier_record)
@@ -473,6 +547,18 @@ def reject_supplier_by_treasurer(
 
     database.add(audit_record)
 
+    create_notifications(
+        database=database,
+        account_id=supplier_record.account_id,
+        event=NotificationEvent.SUPPLIER_REJECTED,
+        event_key=f"supplier-treasurer-rejected-{supplier_record.database_id}-{uuid4().hex}",
+        entity_type="supplier",
+        entity_id=supplier_record.database_id,
+        reference=supplier_record.supplier_id,
+        recipient_roles=["Staff", "Manager"],
+        send_email=True,
+    )
+
     database.commit()
     database.refresh(supplier_record)
 
@@ -527,7 +613,19 @@ def reject_supplier_by_board_member(
         )
     
     database.add(audit_record)
-    
+
+    create_notifications(
+        database=database,
+        account_id=supplier_record.account_id,
+        event=NotificationEvent.SUPPLIER_REJECTED,
+        event_key=f"supplier-board-rejected-{supplier_record.database_id}-{uuid4().hex}",
+        entity_type="supplier",
+        entity_id=supplier_record.database_id,
+        reference=supplier_record.supplier_id,
+        recipient_roles=["Staff", "Manager"],
+        send_email=True,
+    )
+
     database.commit()
     database.refresh(supplier_record)
 

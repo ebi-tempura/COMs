@@ -1,5 +1,6 @@
 from decimal import Decimal
 from fastapi import Depends, HTTPException, APIRouter
+from uuid import uuid4
 
 from sqlalchemy import func, or_, select, update, Integer, cast, func
 from sqlalchemy.orm import Session
@@ -15,6 +16,35 @@ from schemas.work_orders import (
                     WorkEmergencyCreate, WorkEmergencyRead,)
 
 from auth import get_supabase_user
+
+from services.notifications.events import NotificationEvent
+from services.notifications.notification_service import create_notifications
+
+
+def notify_wo_event(
+    database: Session,
+    *,
+    work_order: WorkOrder,
+    event: NotificationEvent,
+    event_key: str,
+    entity_type: str,
+    entity_id: int,
+    reference: str,
+    recipient_roles: list[str],
+    exclude_user_id: int | None = None,
+):
+    create_notifications(
+        database=database,
+        account_id=work_order.account_id,
+        event=event,
+        event_key=f"{event_key}-{uuid4().hex}",
+        entity_type=entity_type,
+        entity_id=entity_id,
+        reference=reference,
+        recipient_roles=recipient_roles,
+        exclude_user_id=exclude_user_id,
+        send_email=True,
+    )
 
 router = APIRouter(   
     prefix="/api/work_order_comp_eme",
@@ -103,6 +133,30 @@ def create_work_emergency(
     )
 
     database.add(record)
+    
+    notify_wo_event(
+        database,
+        work_order=work_order,
+        event=NotificationEvent.WO_EMERGENCY_SUBMITTED,
+        event_key=f"emergency-{record.database_id}-submitted",
+        entity_type="work_order_emergency",
+        entity_id=record.database_id,
+        reference=record.emergency_number,
+        recipient_roles=["Staff", "Manager"],
+    )
+
+    notify_wo_event(
+        database,
+        work_order=work_order,
+        event=NotificationEvent.WO_APPROVAL_REQUESTED,
+        event_key=f"emergency-{record.database_id}-president",
+        entity_type="work_order",
+        entity_id=work_order.database_id,
+        reference=work_order.work_order_number,
+        recipient_roles=["President"],
+        exclude_user_id=work_order.created_by_user_id,
+    )
+    
     database.flush()
 
     work_order.status = "Pending President Approval"
@@ -242,6 +296,19 @@ def create_work_completion (
         )
     
     database.add(audit_record)
+    
+    notify_wo_event(
+        database,
+        work_order=work_order,
+        event=NotificationEvent.WO_COMPLETION_APPROVAL_REQUESTED,
+        event_key=f"completion-{record.database_id}-submitted",
+        entity_type="work_order_completion",
+        entity_id=record.database_id,
+        reference=record.completion_number,
+        recipient_roles=["President"],
+        exclude_user_id=record.created_by_user_id,
+    )
+    
     database.commit()
     database.refresh(record)
 
@@ -362,6 +429,19 @@ def approve_work_completion_by_president(
     )
 
     database.add(audit_record)
+    
+    notify_wo_event(
+        database,
+        work_order=work_order,
+        event=NotificationEvent.WO_COMPLETION_APPROVAL_REQUESTED,
+        event_key=f"completion-{completion_record.database_id}-president-approved",
+        entity_type="work_order_completion",
+        entity_id=completion_record.database_id,
+        reference=completion_record.completion_number,
+        recipient_roles=["Treasurer"],
+        exclude_user_id=completion_record.created_by_user_id,
+    )
+    
     database.commit()
     database.refresh(completion_record)
 
@@ -440,6 +520,30 @@ def approve_work_completion_by_treasurer(
     )
 
     database.add(audit_record)
+    
+    
+    if needs_board_approval:
+        event = NotificationEvent.WO_COMPLETION_APPROVAL_REQUESTED
+        recipients = ["Board Member"]
+    else:
+        event = NotificationEvent.WO_COMPLETION_APPROVED
+        recipients = ["Staff", "Manager"]
+
+    notify_wo_event(
+        database,
+        work_order=work_order,
+        event=event,
+        event_key=f"completion-{completion_record.database_id}-treasurer-approved",
+        entity_type="work_order_completion",
+        entity_id=completion_record.database_id,
+        reference=completion_record.completion_number,
+        recipient_roles=recipients,
+        exclude_user_id=(
+            completion_record.created_by_user_id
+            if needs_board_approval else None
+        ),
+    )
+
     database.commit()
     database.refresh(completion_record)
 
@@ -508,6 +612,18 @@ def approve_work_completion_by_board_member(
     )
 
     database.add(audit_record)
+        
+    notify_wo_event(
+        database,
+        work_order=work_order,
+        event=NotificationEvent.WO_COMPLETION_APPROVED,
+        event_key=f"completion-{completion_record.database_id}-board-approved",
+        entity_type="work_order_completion",
+        entity_id=completion_record.database_id,
+        reference=completion_record.completion_number,
+        recipient_roles=["Staff", "Manager"],
+    )
+
     database.commit()
     database.refresh(completion_record)
 
@@ -578,6 +694,18 @@ def reject_work_completion_by_president(
     )
 
     database.add(audit_record)
+
+    notify_wo_event(
+        database,
+        work_order=work_order,
+        event=NotificationEvent.WO_COMPLETION_REJECTED,
+        event_key=f"completion-{completion_record.database_id}-president-rejected",
+        entity_type="work_order_completion",
+        entity_id=completion_record.database_id,
+        reference=completion_record.completion_number,
+        recipient_roles=["Staff", "Manager"],
+    )
+    
     database.commit()
     database.refresh(completion_record)
 
@@ -646,6 +774,18 @@ def reject_work_completion_by_treasurer(
     )
 
     database.add(audit_record)
+    
+    notify_wo_event(
+        database,
+        work_order=work_order,
+        event=NotificationEvent.WO_COMPLETION_REJECTED,
+        event_key=f"completion-{completion_record.database_id}-treasurer-rejected",
+        entity_type="work_order_completion",
+        entity_id=completion_record.database_id,
+        reference=completion_record.completion_number,
+        recipient_roles=["Staff", "Manager"],
+    )
+    
     database.commit()
     database.refresh(completion_record)
 
@@ -714,6 +854,18 @@ def reject_work_completion_by_board_member(
     )
 
     database.add(audit_record)
+    
+    notify_wo_event(
+        database,
+        work_order=work_order,
+        event=NotificationEvent.WO_COMPLETION_REJECTED,
+        event_key=f"completion-{completion_record.database_id}-board-rejected",
+        entity_type="work_order_completion",
+        entity_id=completion_record.database_id,
+        reference=completion_record.completion_number,
+        recipient_roles=["Staff", "Manager"],
+    )
+    
     database.commit()
     database.refresh(completion_record)
 

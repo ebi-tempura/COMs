@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from decimal import Decimal
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -21,6 +22,8 @@ from schemas.purchase_orders import (
     PurchaseOrderReject,
 )
 from users import require_roles
+from services.notifications.events import NotificationEvent
+from services.notifications.notification_service import create_notifications
 
 router = APIRouter(
     prefix="/api/purchase-orders",
@@ -117,6 +120,7 @@ def add_po_audit(
 ) -> None:
     # Match these keyword names to your existing AuditLog model.
     # In particular, verify user_id and user_name.
+    
     database.add(
         AuditLog(
             account_id=current_user.account_id,
@@ -383,6 +387,22 @@ def submit_purchase_order(
         ),
     )
 
+
+    create_notifications(
+        database=database,
+        account_id=purchase_order.account_id,
+        event=NotificationEvent.PO_APPROVAL_REQUESTED,
+        event_key=f"po-submit-{purchase_order.database_id}-{uuid4().hex}",
+        entity_type="purchase_order",
+        entity_id=purchase_order.database_id,
+        reference=purchase_order.purchase_order_number,
+        recipient_roles=["President"],
+        exclude_user_id=purchase_order.created_by_user_id,
+        send_email=True,
+    )
+
+
+
     return commit_and_read(database, purchase_order)
 
 def approve_purchase_order_step(
@@ -415,6 +435,71 @@ def approve_purchase_order_step(
         action=f"Approved purchase order by {role}",
         details=f"{role} approved; new status: {next_status}",
     )
+
+    def add_po_audit(
+    database: Session,
+    current_user: User,
+    purchase_order: PurchaseOrder,
+    action: str,
+    details: str,
+) -> None:
+    # Match these keyword names to your existing AuditLog model.
+    # In particular, verify user_id and user_name.
+    
+
+        if next_status == "Pending Treasurer Approval":
+            event = NotificationEvent.PO_APPROVAL_REQUESTED
+            recipient_roles = ["Treasurer"]
+
+        elif next_status == "Pending Board Member Approval":
+            event = NotificationEvent.PO_APPROVAL_REQUESTED
+            recipient_roles = ["Board Member"]
+
+        elif next_status == "Approved":
+            event = NotificationEvent.PO_APPROVED
+            recipient_roles = ["Staff", "Manager"]
+
+        else:
+            raise HTTPException(
+                status_code=409,
+                detail="Unexpected purchase order approval status",
+            )
+
+        create_notifications(
+            database=database,
+            account_id=purchase_order.account_id,
+            event=event,
+            event_key=(
+                f"po-{role.lower().replace(' ', '-')}-approved-"
+                f"{purchase_order.database_id}-{uuid4().hex}"
+            ),
+            entity_type="purchase_order",
+            entity_id=purchase_order.database_id,
+            reference=purchase_order.purchase_order_number,
+            recipient_roles=recipient_roles,
+            exclude_user_id=(
+                purchase_order.created_by_user_id
+                if next_status != "Approved"
+                else None
+            ),
+            send_email=True,
+        )
+
+            
+        
+        database.add(
+            AuditLog(
+                account_id=current_user.account_id,
+                user_id=current_user.auth_user_id,
+                user_name=current_user.user_name,
+                action=action,
+                user_role=current_user.user_role,
+                table_name="purchase_orders",
+                record_id=purchase_order.purchase_order_number,
+                details=details,
+                work_order_id=purchase_order.work_order_id,
+            )
+        )
 
     return commit_and_read(database, purchase_order)
 
@@ -505,7 +590,7 @@ def reject_purchase_order(
     purchase_order_number: str,
     payload: PurchaseOrderReject,
     current_user: User = Depends(
-        require_roles("President", "Manager", "Board Member")
+        require_roles("President", "Treasurer", "Board Member")
     ),
     database: Session = Depends(get_db),
 ):
@@ -543,5 +628,22 @@ def reject_purchase_order(
         action=f"Rejected purchase order by {required_role}",
         details=payload.comment.strip(),
     )
+
+
+    create_notifications(
+        database=database,
+        account_id=purchase_order.account_id,
+        event=NotificationEvent.PO_REJECTED,
+        event_key=(
+            f"po-{required_role.lower().replace(' ', '-')}-rejected-"
+            f"{purchase_order.database_id}-{uuid4().hex}"
+        ),
+        entity_type="purchase_order",
+        entity_id=purchase_order.database_id,
+        reference=purchase_order.purchase_order_number,
+        recipient_roles=["Staff", "Manager"],
+        send_email=True,
+    )
+
 
     return commit_and_read(database, purchase_order)

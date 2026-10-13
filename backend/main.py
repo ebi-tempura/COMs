@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from models import User
 from users import router as users_router, get_current_user
 
+from routers import reports
 from routers.auth import router as auth_router
 from routers.attachments import router as attachment_router
 from routers.building_account import router as building_account_router
@@ -13,7 +14,7 @@ from routers.work_orders_com_eme import router as work_orders_com_eme_router
 from routers.purchase_orders import router as purchase_order_router
 from routers.audit import router as audit_router
 from routers.purchase_orders_attachments import router as purchase_orders_attachment_router
-from routers import reports
+from routers.notifications import router as notifications_router
 
 app = FastAPI(title="COMS API")
 
@@ -43,12 +44,13 @@ def read_me(user: User = Depends(get_current_user)):
 
 app.include_router(users_router)
 app.include_router(auth_router)
+app.include_router(notifications_router)
 app.include_router(building_account_router)
 app.include_router(supplier_router)
 app.include_router(work_orders_router)
 app.include_router(work_orders_com_eme_router)
 app.include_router(attachment_router)
 app.include_router(purchase_order_router)
-app.include_router(audit_router)
 app.include_router(purchase_orders_attachment_router)
 app.include_router(reports.router)
+app.include_router(audit_router)
