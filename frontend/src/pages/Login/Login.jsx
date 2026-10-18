@@ -35,6 +35,7 @@ function Login({ setUserEmail }) {
 
     console.log("API /ME STATUS:", response.status);
     console.log("API /ME RESPONSE:", result);
+    console.log("ACCESS TOKEN:", data.session.access_token);
 
     if (!response.ok) {
       console.error("COMS AUTH ERROR:", result);

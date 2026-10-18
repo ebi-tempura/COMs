@@ -2,6 +2,9 @@
 import os
 import httpx
 
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class EmailSendError(Exception):
     def __init__(self, message: str, retryable: bool = True):

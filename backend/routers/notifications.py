@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from datetime import datetime, timezone
 
 from database import get_db
 from models import User
@@ -18,13 +19,13 @@ router = APIRouter(
 def notification_to_dict(record: Notification):
     return {
         "database_id": record.database_id,
-        "event": record.event,
+        "event": record.event_type,
         "title": record.title,
         "message": record.message,
         "entity_type": record.entity_type,
         "entity_id": record.entity_id,
-        "reference": record.reference,
-        "is_read": record.is_read,
+        "is_read": record.read_at is not None,
+        "read_at": record.read_at,
         "created_at": record.created_at,
     }
 
