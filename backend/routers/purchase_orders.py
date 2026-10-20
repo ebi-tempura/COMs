@@ -485,8 +485,6 @@ def approve_purchase_order_step(
             send_email=True,
         )
 
-            
-        
         database.add(
             AuditLog(
                 account_id=current_user.account_id,

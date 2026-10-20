@@ -48,12 +48,13 @@ class WorkOrderRead(BaseModel):
         "Pending Board Member Approval",
         "Approved",
         "Rejected",
-        "Rejected by President",
-        "Rejected by Treasurer",
-        "Rejected by Board Member",
+        "Rejected Work Order authorization by President",
+        "Rejected Work Order authorization by Treasurer",
+        "Rejected Work Order authorization by Board Member",
         "In Progress",
         "Completed",
         "Needs Emergency Information",
+        "Authorized Work Order",
     ]
 
     model_config = ConfigDict(from_attributes=True)

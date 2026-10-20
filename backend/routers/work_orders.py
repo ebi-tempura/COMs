@@ -204,6 +204,19 @@ def submit_work_order(
             exclude_user_id=work_order.created_by_user_id,
             send_email=True,
         )
+
+        create_notifications(
+            database=database,
+            account_id=work_order.account_id,
+            event=NotificationEvent.WO_APPROVAL_NOTIFICATION,
+            event_key=f"wo-president-approved-info-{work_order.database_id}-{uuid4().hex}",
+            entity_type="work_order",
+            entity_id=work_order.database_id,
+            reference=work_order.work_order_number,
+            user_role=current_user.user_role,
+            recipient_roles=["Staff", "Manager"],
+            send_email=True,
+        )
     
     database.commit()
     database.refresh(work_order)
@@ -222,6 +235,7 @@ def approve_work_order_by_president(
     current_user: User = Depends(require_roles("President")),
     database: Session = Depends (get_db),
 ):
+    
     work_order = database.scalar(
         select(WorkOrder).where(
             WorkOrder.work_order_number == work_order_number,
@@ -270,10 +284,24 @@ def approve_work_order_by_president(
         entity_type="work_order",
         entity_id=work_order.database_id,
         reference=work_order.work_order_number,
+        user_role=current_user.user_role,
         recipient_roles=["Treasurer"],
         exclude_user_id=work_order.created_by_user_id,
         send_email=True,
         )
+
+    create_notifications(
+        database=database,
+        account_id=work_order.account_id,
+        event=NotificationEvent.WO_APPROVAL_NOTIFICATION,
+        event_key=f"wo-president-approved-info-{work_order.database_id}-{uuid4().hex}",
+        entity_type="work_order",
+        entity_id=work_order.database_id,
+        reference=work_order.work_order_number,
+        user_role=current_user.user_role,
+        recipient_roles=["Staff", "Manager"],
+        send_email=True,
+    )
     
     database.commit()
     database.refresh(work_order)
@@ -325,7 +353,7 @@ def approve_work_order_by_treasurer(
     if needs_board_approval:
         work_order.status = "Pending Board Member Approval"
     else:
-        work_order.status = "Approved"
+        work_order.status = "Authorized Work Order"
 
     audit_record = AuditLog(
                 account_id=current_user.account_id,
@@ -352,6 +380,19 @@ def approve_work_order_by_treasurer(
             reference=work_order.work_order_number,
             recipient_roles=["Board Member"],
             exclude_user_id=work_order.created_by_user_id,
+            send_email=True,
+        )
+
+        create_notifications(
+            database=database,
+            account_id=work_order.account_id,
+            event=NotificationEvent.WO_APPROVAL_NOTIFICATION,
+            event_key=f"wo-president-approved-info-{work_order.database_id}-{uuid4().hex}",
+            entity_type="work_order",
+            entity_id=work_order.database_id,
+            reference=work_order.work_order_number,
+            user_role=current_user.user_role,
+            recipient_roles=["Staff", "Manager", "President"],
             send_email=True,
         )
 
@@ -428,9 +469,9 @@ def approve_work_order_by_board_member(
         ):
             work_order.status = "Needs Emergency Information"
         else:
-            work_order.status = "Approved"
+            work_order.status = "Authorized Work Order"
     else:
-        work_order.status = "Approved"
+        work_order.status = "Authorized Work Order"
 
     audit_record = AuditLog(
                 account_id=current_user.account_id,
@@ -445,7 +486,7 @@ def approve_work_order_by_board_member(
         
     database.add(audit_record)
 
-    if work_order.status == "Approved":
+    if work_order.status == "Authorized Work Order":
         create_notifications(
             database=database,
             account_id=work_order.account_id,
@@ -454,7 +495,7 @@ def approve_work_order_by_board_member(
             entity_type="work_order",
             entity_id=work_order.database_id,
             reference=work_order.work_order_number,
-            recipient_roles=["Staff", "Manager"],
+            recipient_roles=["Staff", "Manager", "President", "Treasurer"],
             send_email=True,
         )
 
@@ -500,7 +541,7 @@ def reject_work_order_by_president(
             detail="The Work Order creator cannot reject it"
         )
 
-    work_order.status = "Rejected by President"
+    work_order.status = "Rejected Work Order authorization by President"
 
     audit_record = AuditLog(
         account_id=current_user.account_id,
@@ -566,7 +607,7 @@ def reject_work_order_by_treasurer(
             detail="The Work Order creator cannot rejected it"
         )
     
-    work_order.status = "Rejected by Treasurer"
+    work_order.status = "Rejected Work Order authorization by Treasurer"
 
     audit_record = AuditLog(
         account_id=current_user.account_id,
@@ -589,7 +630,7 @@ def reject_work_order_by_treasurer(
         entity_type="work_order",
         entity_id=work_order.database_id,
         reference=work_order.work_order_number,
-        recipient_roles=["Staff", "Manager"],
+        recipient_roles=["Staff", "Manager", "President"],
         send_email=True,
     )
     
@@ -633,7 +674,7 @@ def reject_work_order_by_board_member(
             detail="The Work Order creator cannot reject it"
         )
 
-    work_order.status = "Rejected by board member"
+    work_order.status = "Rejected Work Order authorization by Board Member"
 
     audit_record = AuditLog(
         account_id=current_user.account_id,
@@ -656,7 +697,7 @@ def reject_work_order_by_board_member(
         entity_type="work_order",
         entity_id=work_order.database_id,
         reference=work_order.work_order_number,
-        recipient_roles=["Staff", "Manager"],
+        recipient_roles=["Staff", "Manager", "President", "Treasurer"],
         send_email=True,
     )
     

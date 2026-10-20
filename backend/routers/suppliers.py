@@ -30,7 +30,6 @@ router = APIRouter(
 
 audit_logger = logging.getLogger(__name__)
 
-
 def to_supplier_read(record: Supplier) -> SupplierRead:
     return SupplierRead(
         database_id=record.database_id,
@@ -213,10 +212,19 @@ def submit_supplier(
         exclude_user_id=supplier_record.created_by_user_id,
         send_email=True,
     )
-
     
-    
-    
+    create_notifications(
+        database=database,
+        account_id=supplier_record.account_id,
+        event=NotificationEvent.SUPPLIER_APPROVAL_NOTIFICATION,
+        event_key=f"supplier-submit-{supplier_record.database_id}-{uuid4().hex}",
+        entity_type="supplier",
+        entity_id=supplier_record.database_id,
+        reference=supplier_record.supplier_id,
+        recipient_roles=["Staff", "Manager"],
+        exclude_user_id=supplier_record.created_by_user_id,
+        send_email=True,
+    )
     database.commit()
     database.refresh(supplier_record)
 
@@ -284,6 +292,19 @@ def approve_supplier_by_president(
         reference=supplier_record.supplier_id,
         recipient_roles=["Treasurer"],
         exclude_user_id=supplier_record.created_by_user_id,
+        send_email=True,
+    )
+
+    create_notifications(
+        database=database,
+        account_id=supplier_record.account_id,
+        event=NotificationEvent.SUPPLIER_APPROVAL_NOTIFICATION,
+        event_key=f"supplier-president-approved-info-{supplier_record.database_id}-{uuid4().hex}",
+        entity_type="supplier",
+        entity_id=supplier_record.database_id,
+        reference=supplier_record.supplier_id,
+        user_role=current_user.user_role,
+        recipient_roles=["Staff", "Manager"],
         send_email=True,
     )
     
@@ -354,6 +375,19 @@ def approve_supplier_by_treasurer(
         exclude_user_id=supplier_record.created_by_user_id,
         send_email=True,
     )
+    
+    create_notifications(
+        database=database,
+        account_id=supplier_record.account_id,
+        event=NotificationEvent.SUPPLIER_APPROVAL_NOTIFICATION,
+        event_key=f"supplier-president-approved-info-{supplier_record.database_id}-{uuid4().hex}",
+        entity_type="supplier",
+        entity_id=supplier_record.database_id,
+        reference=supplier_record.supplier_id,
+        user_role=current_user.user_role,
+        recipient_roles=["Staff", "Manager", "President"],
+        send_email=True,
+    )
 
     database.commit()
     database.refresh(supplier_record)
@@ -418,7 +452,20 @@ def approve_supplier_by_board_member(
         entity_type="supplier",
         entity_id=supplier_record.database_id,
         reference=supplier_record.supplier_id,
-        recipient_roles=["Staff", "Manager"],
+        recipient_roles=["Staff", "Manager","President", "Treasurer"],
+        send_email=True,
+    )
+
+    create_notifications(
+        database=database,
+        account_id=supplier_record.account_id,
+        event=NotificationEvent.SUPPLIER_APPROVAL_NOTIFICATION,
+        event_key=f"supplier-president-approved-info-{supplier_record.database_id}-{uuid4().hex}",
+        entity_type="supplier",
+        entity_id=supplier_record.database_id,
+        reference=supplier_record.supplier_id,
+        user_role=current_user.user_role,
+        recipient_roles=["Staff", "Manager", "President","Treasurer"],
         send_email=True,
     )
    
@@ -492,6 +539,19 @@ def reject_supplier_by_president(
         send_email=True,
     )
 
+    create_notifications(
+        database=database,
+        account_id=supplier_record.account_id,
+        event=NotificationEvent.SUPPLIER_REJECT_NOTIFICATION,
+        event_key=f"supplier-president-rejected-{supplier_record.database_id}-{uuid4().hex}",
+        entity_type="supplier",
+        entity_id=supplier_record.database_id,
+        reference=supplier_record.supplier_id,
+        user_role=current_user.user_role,
+        recipient_roles=["Staff", "Manager", "President"],
+        send_email=True,
+    )
+
     database.commit()
     database.refresh(supplier_record)
 
@@ -555,8 +615,8 @@ def reject_supplier_by_treasurer(
         entity_type="supplier",
         entity_id=supplier_record.database_id,
         reference=supplier_record.supplier_id,
-        recipient_roles=["Staff", "Manager"],
-        send_email=True,
+        recipient_roles=["Staff", "Manager","President"],
+        send_email=True
     )
 
     database.commit()
@@ -622,7 +682,7 @@ def reject_supplier_by_board_member(
         entity_type="supplier",
         entity_id=supplier_record.database_id,
         reference=supplier_record.supplier_id,
-        recipient_roles=["Staff", "Manager"],
+        recipient_roles=["Staff", "Manager","President", "Treasurer"],
         send_email=True,
     )
 

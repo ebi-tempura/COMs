@@ -25,6 +25,7 @@ def create_notifications(
     recipient_roles: list[str],
     exclude_user_id: int | None = None,
     send_email: bool = True,
+    user_role: str | None = None,
 ) -> list[Notification]:
     """
     Create in-app notifications and queue email deliveries.
@@ -53,6 +54,7 @@ def create_notifications(
     title, message = build_notification_message(
         event=event,
         reference=reference,
+        user_role=user_role,
     )
 
     created_notifications = []
