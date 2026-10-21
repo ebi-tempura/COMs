@@ -659,7 +659,8 @@ def approve_work_completion_by_board_member(
         entity_id=completion_record.database_id,
         reference=completion_record.completion_number,
         user_role=current_user.user_role,
-        recipient_roles=["Staff", "Manager", "President","Treasurer"],
+        recipient_roles=["Staff", "Manager", "President","Treasurer","Board Member"],
+        exclude_user_id=current_user.database_id,
     )
 
     database.commit()
@@ -904,7 +905,8 @@ def reject_work_completion_by_board_member(
         entity_id=completion_record.database_id,
         reference=completion_record.completion_number,
         user_role=current_user.user_role,
-        recipient_roles=["Staff", "Manager","President","Treasurer"],
+        recipient_roles=["Staff", "Manager","President","Treasurer","Board Member"],
+        exclude_user_id=current_user.database_id,
     )
     
     database.commit()

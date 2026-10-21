@@ -305,6 +305,7 @@ def approve_supplier_by_president(
         reference=supplier_record.supplier_id,
         user_role=current_user.user_role,
         recipient_roles=["Staff", "Manager"],
+        exclude_user_id=current_user.database_id,
         send_email=True,
     )
     
@@ -386,6 +387,7 @@ def approve_supplier_by_treasurer(
         reference=supplier_record.supplier_id,
         user_role=current_user.user_role,
         recipient_roles=["Staff", "Manager", "President"],
+        exclude_user_id=current_user.database_id,
         send_email=True,
     )
 
@@ -453,6 +455,7 @@ def approve_supplier_by_board_member(
         entity_id=supplier_record.database_id,
         reference=supplier_record.supplier_id,
         recipient_roles=["Staff", "Manager","President", "Treasurer"],
+        exclude_user_id=current_user.database_id,
         send_email=True,
     )
 
@@ -465,7 +468,8 @@ def approve_supplier_by_board_member(
         entity_id=supplier_record.database_id,
         reference=supplier_record.supplier_id,
         user_role=current_user.user_role,
-        recipient_roles=["Staff", "Manager", "President","Treasurer"],
+        recipient_roles=["Staff", "Manager", "President","Treasurer", "Board Member"],
+        exclude_user_id=current_user.database_id,
         send_email=True,
     )
    
@@ -682,7 +686,8 @@ def reject_supplier_by_board_member(
         entity_type="supplier",
         entity_id=supplier_record.database_id,
         reference=supplier_record.supplier_id,
-        recipient_roles=["Staff", "Manager","President", "Treasurer"],
+        recipient_roles=["Staff", "Manager","President", "Treasurer","Board Member"],
+        exclude_user_id=current_user.database_id,
         send_email=True,
     )
 

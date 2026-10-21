@@ -495,7 +495,8 @@ def approve_work_order_by_board_member(
             entity_type="work_order",
             entity_id=work_order.database_id,
             reference=work_order.work_order_number,
-            recipient_roles=["Staff", "Manager", "President", "Treasurer"],
+            recipient_roles=["Staff", "Manager", "President", "Treasurer","Board Member"],
+            exclude_user_id=current_user.database_id,
             send_email=True,
         )
 
@@ -697,7 +698,8 @@ def reject_work_order_by_board_member(
         entity_type="work_order",
         entity_id=work_order.database_id,
         reference=work_order.work_order_number,
-        recipient_roles=["Staff", "Manager", "President", "Treasurer"],
+        recipient_roles=["Staff", "Manager", "President", "Treasurer","Board Member"],
+        exclude_user_id=current_user.database_id,
         send_email=True,
     )
     

@@ -31,11 +31,13 @@ class NotificationEvent(str, Enum):
     WO_EMERGENCY_SUBMISSION_NOTIFICATION = "emergency.submission_notification"
 
     # Purchase Orders
+    PO_SUBMISSION = "po.submission"
     PO_APPROVAL_REQUESTED = "po.approval_requested"
     PO_APPROVED = "po.approved"
     PO_REJECTED = "po.rejected"
     PO_APPROVAL_NOTIFICATION = "po.approval_notification"
     PO_REJECT_NOTIFICATION = "po.reject_notification"
+    PO_SUBMISSION_NOTIFICATION = "po.submission_notification"
 
     # Suppliers
     SUPPLIER_APPROVAL_REQUESTED = "supplier.approval_requested"
@@ -158,6 +160,10 @@ EVENT_DEFINITIONS: dict[NotificationEvent, EventDefinition] = {
     NotificationEvent.PO_REJECT_NOTIFICATION: EventDefinition(
         "Purchase Order Rejection Notification",
         "Purchase Order {reference} has been rejected by the {user_role}.",
+    ),
+    NotificationEvent.PO_SUBMISSION_NOTIFICATION: EventDefinition(
+        "Purchase Order Submission Notification",
+        "Purchase Order {reference} has been submitted for approval.",
     ),
 
     # Suppliers

@@ -2,69 +2,44 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import (
-    AuditLog,
-    PurchaseOrder,
-    PurchaseOrderSequence,
-    Supplier,
-    User,
-    WorkOrder,
-)
+from models import AuditLog, PurchaseOrder, PurchaseOrderSequence, Supplier, User, WorkOrder
+
 from schemas.purchase_orders import (
     PurchaseOrderCreate,
     PurchaseOrderRead,
     PurchaseOrderReject,
-)
+ )
 from users import require_roles
 from services.notifications.events import NotificationEvent
 from services.notifications.notification_service import create_notifications
 
+
 router = APIRouter(
     prefix="/api/purchase-orders",
     tags=["Purchase Orders"],
-)
+ )
 
 BOARD_THRESHOLD = Decimal("10000.00")
 
-def get_purchase_order_or_404(
-    database: Session,
-    account_id: str,
-    purchase_order_number: str,
-) -> PurchaseOrder:
-    purchase_order = database.scalar(
-        select(PurchaseOrder).where(
-            PurchaseOrder.account_id == account_id,
-            PurchaseOrder.purchase_order_number
-            == purchase_order_number,
-        )
-    )
-
-    if purchase_order is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Purchase order not found",
-        )
-
-    return purchase_order
+### Response and Numbering Helpers ###
 
 def get_related_records(
     database: Session,
     purchase_order: PurchaseOrder,
-) -> tuple[WorkOrder | None, Supplier]:
-
-    work_order=None
+ ) -> tuple[WorkOrder | None, Supplier]:
+    work_order = None
 
     if purchase_order.work_order_id is not None:
         work_order = database.scalar(
             select(WorkOrder).where(
-                WorkOrder.account_id == purchase_order.account_id,
                 WorkOrder.database_id == purchase_order.work_order_id,
+                WorkOrder.account_id == purchase_order.account_id,
             )
         )
 
@@ -76,8 +51,8 @@ def get_related_records(
 
     supplier = database.scalar(
         select(Supplier).where(
-            Supplier.account_id == purchase_order.account_id,
             Supplier.database_id == purchase_order.supplier_database_id,
+            Supplier.account_id == purchase_order.account_id,
         )
     )
 
@@ -93,16 +68,16 @@ def to_purchase_order_read(
     purchase_order: PurchaseOrder,
     work_order: WorkOrder | None,
     supplier: Supplier,
-) -> PurchaseOrderRead:
-    
+ ) -> PurchaseOrderRead:
     return PurchaseOrderRead(
         database_id=purchase_order.database_id,
         account_id=purchase_order.account_id,
         purchase_order_number=purchase_order.purchase_order_number,
         title=purchase_order.title,
-        priority=purchase_order.priority, 
         created_year=purchase_order.created_year,
-        work_order_number=(work_order.work_order_number if work_order is not None else None),
+        work_order_number=(
+            work_order.work_order_number if work_order is not None else None
+        ),
         supplier_id=supplier.supplier_id,
         description=purchase_order.description,
         amount=purchase_order.amount,
@@ -111,47 +86,12 @@ def to_purchase_order_read(
         created_by_user_id=purchase_order.created_by_user_id,
     )
 
-def add_po_audit(
-    database: Session,
-    current_user: User,
-    purchase_order: PurchaseOrder,
-    action: str,
-    details: str,
-) -> None:
-    # Match these keyword names to your existing AuditLog model.
-    # In particular, verify user_id and user_name.
-    
-    database.add(
-        AuditLog(
-            account_id=current_user.account_id,
-            user_id=current_user.auth_user_id,
-            user_name=current_user.user_name,
-            action=action,
-            user_role=current_user.user_role,
-            table_name="purchase_orders",
-            record_id=purchase_order.purchase_order_number,
-            details=details,
-            work_order_id=purchase_order.work_order_id,
-        )
-    )
-
-def ensure_not_creator(
-    purchase_order: PurchaseOrder,
-    current_user: User,
-) -> None:
-    if purchase_order.created_by_user_id == current_user.database_id:
-        raise HTTPException(
-            status_code=403,
-            detail="Creator cannot approve or reject their own purchase order",
-        )
-
 def next_po_number(
     database: Session,
     account_id: str,
     year: int,
-) -> str:
-    # SQLite UPSERT and RETURNING allocate the next account/year number
-    # within the current database transaction.
+ ) -> str:
+    # Preserve atomic numbering within each account and year.
     statement = (
         sqlite_insert(PurchaseOrderSequence)
         .values(
@@ -165,8 +105,7 @@ def next_po_number(
                 PurchaseOrderSequence.created_year,
             ],
             set_={
-                "last_number":
-                    PurchaseOrderSequence.last_number + 1,
+                "last_number": PurchaseOrderSequence.last_number + 1,
             },
         )
         .returning(PurchaseOrderSequence.last_number)
@@ -182,45 +121,63 @@ def next_po_number(
 
     return f"PO-{year}-{sequence:04d}"
 
-def commit_and_read(
-    database: Session,
-    purchase_order: PurchaseOrder,
-) -> PurchaseOrderRead:
-    work_order, supplier = get_related_records(
-        database,
-        purchase_order,
+### Read Purchase Order ###
+
+@router.get(
+    "/{purchase_order_number}",
+    response_model=PurchaseOrderRead,
+ )
+
+def get_purchase_order(
+    purchase_order_number: str,
+    current_user: User = Depends(
+        require_roles(
+            "Admin", "Staff", "Manager",
+            "President", "Board Member", "Treasurer",
+        )
+    ),
+    database: Session = Depends(get_db),
+ ):
+    purchase_order = database.scalar(
+        select(PurchaseOrder).where(
+            PurchaseOrder.purchase_order_number == purchase_order_number,
+            PurchaseOrder.account_id == current_user.account_id,
+        )
     )
-    result = to_purchase_order_read(
-        purchase_order,
-        work_order,
-        supplier,
-    )
-    database.commit()
-    return result
+
+    if purchase_order is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Purchase order not found",
+        )
+
+    work_order, supplier = get_related_records(database, purchase_order)
+
+    return to_purchase_order_read(purchase_order, work_order, supplier)
+
+### Create Purchase Order ###
 
 @router.post(
     "",
     response_model=PurchaseOrderRead,
-    status_code=status.HTTP_201_CREATED,
-)
+    status_code=201,
+ )
 
 def create_purchase_order(
     payload: PurchaseOrderCreate,
-    current_user: User = Depends(
-        require_roles("Admin", "Manager", "Staff")
-    ),
+    current_user: User = Depends(require_roles("Admin", "Manager", "Staff")),
     database: Session = Depends(get_db),
-):
+ ):
     work_order = None
-    
+
     if payload.work_order_number is not None:
         work_order = database.scalar(
             select(WorkOrder).where(
+                WorkOrder.work_order_number == payload.work_order_number,
                 WorkOrder.account_id == current_user.account_id,
-                WorkOrder.work_order_number
-                == payload.work_order_number,
             )
         )
+
         if work_order is None:
             raise HTTPException(
                 status_code=404,
@@ -235,10 +192,11 @@ def create_purchase_order(
 
     supplier = database.scalar(
         select(Supplier).where(
-            Supplier.account_id == current_user.account_id,
             Supplier.supplier_id == payload.supplier_id,
+            Supplier.account_id == current_user.account_id,
         )
     )
+
     if supplier is None:
         raise HTTPException(
             status_code=404,
@@ -251,7 +209,6 @@ def create_purchase_order(
             detail="Supplier must be approved",
         )
 
-    # If your Supplier model has an Active/Inactive field, check it here too.
     if hasattr(supplier, "is_active") and not supplier.is_active:
         raise HTTPException(
             status_code=409,
@@ -263,16 +220,16 @@ def create_purchase_order(
     purchase_order = PurchaseOrder(
         account_id=current_user.account_id,
         purchase_order_number=next_po_number(
-            database,
-            current_user.account_id,
-            year,
+            database, current_user.account_id, year
         ),
-        title = payload.title.strip(),
-        priority = payload.priority,
+        title=payload.title.strip(),
+        priority=payload.priority,
         created_year=year,
         created_by_user_id=current_user.database_id,
-        supplier_database_id = supplier.database_id,
-        work_order_id=(work_order.database_id if work_order is not None else None),
+        supplier_database_id=supplier.database_id,
+        work_order_id=(
+            work_order.database_id if work_order is not None else None
+        ),
         description=payload.description.strip(),
         amount=payload.amount,
         status="Draft",
@@ -281,68 +238,48 @@ def create_purchase_order(
     database.add(purchase_order)
     database.flush()
 
-    add_po_audit(
-        database,
-        current_user,
-        purchase_order,
+    audit_record = AuditLog(
+        account_id=current_user.account_id,
+        user_id=current_user.auth_user_id,
+        user_name=current_user.user_name,
+        user_role=current_user.user_role,
         action="Created purchase order",
+        table_name="purchase_orders",
+        record_id=purchase_order.purchase_order_number,
         details="Purchase order created as Draft",
+        work_order_id=purchase_order.work_order_id,
     )
 
-    return commit_and_read(database, purchase_order)
+    database.add(audit_record)
+    database.commit()
+    database.refresh(purchase_order)
 
-@router.get(
-    "/{purchase_order_number}",
-    response_model=PurchaseOrderRead,
-)
+    return to_purchase_order_read(purchase_order, work_order, supplier)
 
-def get_purchase_order(
-    purchase_order_number: str,
-    current_user: User = Depends(
-        require_roles(
-            "Admin",
-            "Staff",
-            "Manager",
-            "President",
-            "Board Member",
-            "Treasurer",
-        )
-    ),
-    database: Session = Depends(get_db),
-):
-    purchase_order = get_purchase_order_or_404(
-        database,
-        current_user.account_id,
-        purchase_order_number,
-    )
-    work_order, supplier = get_related_records(
-        database,
-        purchase_order,
-    )
-
-    return to_purchase_order_read(
-        purchase_order,
-        work_order,
-        supplier,
-    )
+### Submit Purchase Order ###
 
 @router.post(
     "/{purchase_order_number}/submit",
     response_model=PurchaseOrderRead,
-)
+ )
 
 def submit_purchase_order(
     purchase_order_number: str,
-    current_user: User = Depends(
-        require_roles("Admin", "Manager", "Staff")
-    ),
+    current_user: User = Depends(require_roles("Admin", "Manager", "Staff")),
     database: Session = Depends(get_db),
-):
-    purchase_order = get_purchase_order_or_404(
-        database,
-        current_user.account_id,
-        purchase_order_number,
+    ):
+    purchase_order = database.scalar(
+        select(PurchaseOrder).where(
+            PurchaseOrder.purchase_order_number == purchase_order_number,
+            PurchaseOrder.account_id == current_user.account_id,
+        )
     )
+
+    if purchase_order is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Purchase order not found",
+        )
 
     if purchase_order.status != "Draft":
         raise HTTPException(
@@ -350,17 +287,13 @@ def submit_purchase_order(
             detail="Only a Draft purchase order can be submitted",
         )
 
-    work_order, supplier = get_related_records(
-        database,
-        purchase_order,
-    )
+    work_order, supplier = get_related_records(database, purchase_order)
 
-    
     if work_order is not None and work_order.status != "Approved":
         raise HTTPException(
-        status_code= 409,
-        detail="Work order is no longer approved"
-    )
+            status_code=409,
+            detail="Work order is no longer approved",
+        )
 
     if supplier.status != "Approved":
         raise HTTPException(
@@ -376,17 +309,22 @@ def submit_purchase_order(
 
     purchase_order.status = "Pending President Approval"
 
-    add_po_audit(
-        database,
-        current_user,
-        purchase_order,
+    audit_record = AuditLog(
+        account_id=current_user.account_id,
+        user_id=current_user.auth_user_id,
+        user_name=current_user.user_name,
+        user_role=current_user.user_role,
         action="Submitted purchase order",
+        table_name="purchase_orders",
+        record_id=purchase_order.purchase_order_number,
         details=(
             "Purchase order submitted; pending President approval. "
             f"Amount: {purchase_order.amount} MXN"
         ),
+        work_order_id=purchase_order.work_order_id,
     )
 
+    database.add(audit_record)
 
     create_notifications(
         database=database,
@@ -401,188 +339,306 @@ def submit_purchase_order(
         send_email=True,
     )
 
-
-
-    return commit_and_read(database, purchase_order)
-
-def approve_purchase_order_step(
-    database: Session,
-    current_user: User,
-    purchase_order_number: str,
-    expected_status: str,
-    next_status: str,
-    role: str,
-) -> PurchaseOrderRead:
-    purchase_order = get_purchase_order_or_404(
-        database,
-        current_user.account_id,
-        purchase_order_number,
-    )
-    ensure_not_creator(purchase_order, current_user)
-
-    if purchase_order.status != expected_status:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Purchase order is not pending {role} approval",
-        )
-
-    purchase_order.status = next_status
-
-    add_po_audit(
-        database,
-        current_user,
-        purchase_order,
-        action=f"Approved purchase order by {role}",
-        details=f"{role} approved; new status: {next_status}",
+    create_notifications(
+        database=database,
+        account_id=purchase_order.account_id,
+        event=NotificationEvent.PO_SUBMISSION_NOTIFICATION,
+        event_key=f"po-submit-{purchase_order.database_id}-{uuid4().hex}",
+        entity_type="purchase_order",
+        entity_id=purchase_order.database_id,
+        reference=purchase_order.purchase_order_number,
+        recipient_roles=["Staff", "Manager"],
+        exclude_user_id=purchase_order.created_by_user_id,
+        send_email=True,
     )
 
-    def add_po_audit(
-    database: Session,
-    current_user: User,
-    purchase_order: PurchaseOrder,
-    action: str,
-    details: str,
-) -> None:
-    # Match these keyword names to your existing AuditLog model.
-    # In particular, verify user_id and user_name.
-    
+    database.commit()
+    database.refresh(purchase_order)
 
-        if next_status == "Pending Treasurer Approval":
-            event = NotificationEvent.PO_APPROVAL_REQUESTED
-            recipient_roles = ["Treasurer"]
+    return to_purchase_order_read(purchase_order, work_order, supplier)
 
-        elif next_status == "Pending Board Member Approval":
-            event = NotificationEvent.PO_APPROVAL_REQUESTED
-            recipient_roles = ["Board Member"]
-
-        elif next_status == "Approved":
-            event = NotificationEvent.PO_APPROVED
-            recipient_roles = ["Staff", "Manager"]
-
-        else:
-            raise HTTPException(
-                status_code=409,
-                detail="Unexpected purchase order approval status",
-            )
-
-        create_notifications(
-            database=database,
-            account_id=purchase_order.account_id,
-            event=event,
-            event_key=(
-                f"po-{role.lower().replace(' ', '-')}-approved-"
-                f"{purchase_order.database_id}-{uuid4().hex}"
-            ),
-            entity_type="purchase_order",
-            entity_id=purchase_order.database_id,
-            reference=purchase_order.purchase_order_number,
-            recipient_roles=recipient_roles,
-            exclude_user_id=(
-                purchase_order.created_by_user_id
-                if next_status != "Approved"
-                else None
-            ),
-            send_email=True,
-        )
-
-        database.add(
-            AuditLog(
-                account_id=current_user.account_id,
-                user_id=current_user.auth_user_id,
-                user_name=current_user.user_name,
-                action=action,
-                user_role=current_user.user_role,
-                table_name="purchase_orders",
-                record_id=purchase_order.purchase_order_number,
-                details=details,
-                work_order_id=purchase_order.work_order_id,
-            )
-        )
-
-    return commit_and_read(database, purchase_order)
-
-@router.post(
-    "/{purchase_order_number}/approve-treasurer",
-    response_model=PurchaseOrderRead,
-)
-
-def approve_purchase_order_treasurer(
-    purchase_order_number: str,
-    current_user: User = Depends(
-        require_roles("Treasurer")
-    ),
-    database: Session = Depends(get_db),
-):
-    purchase_order = get_purchase_order_or_404(
-        database,
-        current_user.account_id,
-        purchase_order_number,
-    )
-
-    next_status = (
-        "Pending Board Member Approval"
-        if (
-            purchase_order.amount >= BOARD_THRESHOLD
-            or purchase_order.priority == "High"
-        )
-        else "Approved"
-    )
-
-    return approve_purchase_order_step(
-        database,
-        current_user,
-        purchase_order_number,
-        expected_status="Pending Treasurer Approval",
-        next_status=next_status,
-        role="Treasurer",
-    )
+### Approve Purchase Order ###
 
 @router.post(
     "/{purchase_order_number}/approve-president",
     response_model=PurchaseOrderRead,
-)
+ )
 
 def approve_purchase_order_president(
     purchase_order_number: str,
-    current_user: User = Depends(
-        require_roles("President")
-    ),
+    current_user: User = Depends(require_roles("President")),
     database: Session = Depends(get_db),
-):
-    return approve_purchase_order_step(
-        database,
-        current_user,
-        purchase_order_number,
-        expected_status="Pending President Approval",
-        next_status="Pending Treasurer Approval",
-        role="President",
+ ):
+    purchase_order = database.scalar(
+        select(PurchaseOrder).where(
+            PurchaseOrder.purchase_order_number == purchase_order_number,
+            PurchaseOrder.account_id == current_user.account_id,
+        )
     )
+
+    if purchase_order is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Purchase order not found",
+        )
+
+    if purchase_order.created_by_user_id == current_user.database_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Creator cannot approve or reject their own purchase order",
+        )
+
+    if purchase_order.status != "Pending President Approval":
+        raise HTTPException(
+            status_code=409,
+            detail="Purchase order is not pending President approval",
+        )
+
+    work_order, supplier = get_related_records(database, purchase_order)
+
+    purchase_order.status = "Pending Treasurer Approval"
+
+    audit_record = AuditLog(
+        account_id=current_user.account_id,
+        user_id=current_user.auth_user_id,
+        user_name=current_user.user_name,
+        user_role=current_user.user_role,
+        action="Approved purchase order by President",
+        table_name="purchase_orders",
+        record_id=purchase_order.purchase_order_number,
+        details="President approved; new status: Pending Treasurer Approval",
+        work_order_id=purchase_order.work_order_id,
+    )
+
+    database.add(audit_record)
+
+    create_notifications(
+        database=database,
+        account_id=purchase_order.account_id,
+        event=NotificationEvent.PO_APPROVAL_REQUESTED,
+        event_key=(
+            f"po-president-approved-{purchase_order.database_id}-{uuid4().hex}"
+        ),
+        entity_type="purchase_order",
+        entity_id=purchase_order.database_id,
+        reference=purchase_order.purchase_order_number,
+        recipient_roles=["Treasurer"],
+        exclude_user_id=purchase_order.created_by_user_id,
+        send_email=True,
+    )
+    
+    create_notifications(
+        database=database,
+        account_id=purchase_order.account_id,
+        event=NotificationEvent.PO_APPROVAL_NOTIFICATION,
+        event_key=(
+            f"po-treasurer-approved-{purchase_order.database_id}-{uuid4().hex}"
+        ),
+        entity_type="purchase_order",
+        entity_id=purchase_order.database_id,
+        reference=purchase_order.purchase_order_number,
+        recipient_roles=["Staff", "Manager"],
+        exclude_user_id=purchase_order.created_by_user_id,
+        send_email=True,
+    )
+
+    database.commit()
+    database.refresh(purchase_order)
+
+    return to_purchase_order_read(purchase_order, work_order, supplier)
+
+@router.post(
+    "/{purchase_order_number}/approve-treasurer",
+    response_model=PurchaseOrderRead,
+ )
+
+def approve_purchase_order_treasurer(
+    purchase_order_number: str,
+    current_user: User = Depends(require_roles("Treasurer")),
+    database: Session = Depends(get_db),
+ ):
+    purchase_order = database.scalar(
+        select(PurchaseOrder).where(
+            PurchaseOrder.purchase_order_number == purchase_order_number,
+            PurchaseOrder.account_id == current_user.account_id,
+        )
+    )
+
+    if purchase_order is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Purchase order not found",
+        )
+
+    if purchase_order.created_by_user_id == current_user.database_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Creator cannot approve or reject their own purchase order",
+        )
+
+    if purchase_order.status != "Pending Treasurer Approval":
+        raise HTTPException(
+            status_code=409,
+            detail="Purchase order is not pending Treasurer approval",
+        )
+
+    work_order, supplier = get_related_records(database, purchase_order)
+
+    needs_board_approval = (
+        purchase_order.amount >= BOARD_THRESHOLD
+        or purchase_order.priority == "High"
+    )
+
+    if needs_board_approval:
+        purchase_order.status = "Pending Board Member Approval"
+    else:
+        purchase_order.status = "Approved"
+
+    audit_record = AuditLog(
+        account_id=current_user.account_id,
+        user_id=current_user.auth_user_id,
+        user_name=current_user.user_name,
+        user_role=current_user.user_role,
+        action="Approved purchase order by Treasurer",
+        table_name="purchase_orders",
+        record_id=purchase_order.purchase_order_number,
+        details=f"Treasurer approved; new status: {purchase_order.status}",
+        work_order_id=purchase_order.work_order_id,
+    )
+
+    database.add(audit_record)
+
+    if needs_board_approval:
+        create_notifications(
+            database=database,
+            account_id=purchase_order.account_id,
+            event=NotificationEvent.PO_APPROVAL_REQUESTED,
+            event_key=(
+                f"po-treasurer-approved-{purchase_order.database_id}-{uuid4().hex}"
+            ),
+            entity_type="purchase_order",
+            entity_id=purchase_order.database_id,
+            reference=purchase_order.purchase_order_number,
+            recipient_roles=["Board Member"],
+            exclude_user_id=purchase_order.created_by_user_id,
+            send_email=True,
+        )
+
+
+        create_notifications(
+            database=database,
+            account_id=purchase_order.account_id,
+            event=NotificationEvent.PO_APPROVAL_NOTIFICATION,
+            event_key=(
+                f"po-treasurer-approved-{purchase_order.database_id}-{uuid4().hex}"
+            ),
+            entity_type="purchase_order",
+            entity_id=purchase_order.database_id,
+            reference=purchase_order.purchase_order_number,
+            recipient_roles=["Staff", "Manager","President"],
+            exclude_user_id=purchase_order.created_by_user_id,
+            send_email=True,
+        )
+    else:
+        create_notifications(
+            database=database,
+            account_id=purchase_order.account_id,
+            event=NotificationEvent.PO_APPROVED,
+            event_key=(
+                f"po-treasurer-approved-{purchase_order.database_id}-{uuid4().hex}"
+            ),
+            entity_type="purchase_order",
+            entity_id=purchase_order.database_id,
+            reference=purchase_order.purchase_order_number,
+            recipient_roles=["Staff", "Manager","President"],
+            send_email=True,
+        )
+
+    database.commit()
+    database.refresh(purchase_order)
+
+    return to_purchase_order_read(purchase_order, work_order, supplier)
 
 @router.post(
     "/{purchase_order_number}/approve-board-member",
     response_model=PurchaseOrderRead,
-)
+    )
 
 def approve_purchase_order_board_member(
     purchase_order_number: str,
-    current_user: User = Depends(
-        require_roles("Board Member")
-    ),
+    current_user: User = Depends(require_roles("Board Member")),
     database: Session = Depends(get_db),
-):
-    return approve_purchase_order_step(
-        database,
-        current_user,
-        purchase_order_number,
-        expected_status="Pending Board Member Approval",
-        next_status="Approved",
-        role="Board Member",
+ ):
+    purchase_order = database.scalar(
+        select(PurchaseOrder).where(
+            PurchaseOrder.purchase_order_number == purchase_order_number,
+            PurchaseOrder.account_id == current_user.account_id,
+        )
     )
+
+    if purchase_order is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Purchase order not found",
+        )
+
+    if purchase_order.created_by_user_id == current_user.database_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Creator cannot approve or reject their own purchase order",
+        )
+
+    if purchase_order.status != "Pending Board Member Approval":
+        raise HTTPException(
+            status_code=409,
+            detail="Purchase order is not pending Board Member approval",
+        )
+
+    work_order, supplier = get_related_records(database, purchase_order)
+
+    purchase_order.status = "Approved"
+
+    audit_record = AuditLog(
+        account_id=current_user.account_id,
+        user_id=current_user.auth_user_id,
+        user_name=current_user.user_name,
+        user_role=current_user.user_role,
+        action="Approved purchase order by Board Member",
+        table_name="purchase_orders",
+        record_id=purchase_order.purchase_order_number,
+        details="Board Member approved; new status: Approved",
+        work_order_id=purchase_order.work_order_id,
+    )
+
+    database.add(audit_record)
+
+    create_notifications(
+        database=database,
+        account_id=purchase_order.account_id,
+        event=NotificationEvent.PO_APPROVED,
+        event_key=(
+            f"po-board-member-approved-{purchase_order.database_id}-{uuid4().hex}"
+        ),
+        entity_type="purchase_order",
+        entity_id=purchase_order.database_id,
+        reference=purchase_order.purchase_order_number,
+        recipient_roles=["Staff", "Manager","President", "Treasurer", "Board Member"],
+        exclude_user_id=current_user.database_id,
+        send_email=True,
+    )
+
+    database.commit()
+    database.refresh(purchase_order)
+
+    return to_purchase_order_read(purchase_order, work_order, supplier)
+
+
+### Reject Purchase Order ###
 
 @router.post(
     "/{purchase_order_number}/reject",
     response_model=PurchaseOrderRead,
-)
+ )
 
 def reject_purchase_order(
     purchase_order_number: str,
@@ -591,13 +647,25 @@ def reject_purchase_order(
         require_roles("President", "Treasurer", "Board Member")
     ),
     database: Session = Depends(get_db),
-):
-    purchase_order = get_purchase_order_or_404(
-        database,
-        current_user.account_id,
-        purchase_order_number,
+ ):
+    purchase_order = database.scalar(
+        select(PurchaseOrder).where(
+            PurchaseOrder.purchase_order_number == purchase_order_number,
+            PurchaseOrder.account_id == current_user.account_id,
+        )
     )
-    ensure_not_creator(purchase_order, current_user)
+
+    if purchase_order is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Purchase order not found",
+        )
+
+    if purchase_order.created_by_user_id == current_user.database_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Creator cannot approve or reject their own purchase order",
+        )
 
     required_role = {
         "Pending President Approval": "President",
@@ -617,16 +685,23 @@ def reject_purchase_order(
             detail=f"Only the {required_role} can reject at this step",
         )
 
+    work_order, supplier = get_related_records(database, purchase_order)
+
     purchase_order.status = f"Rejected by {required_role}"
 
-    add_po_audit(
-        database,
-        current_user,
-        purchase_order,
+    audit_record = AuditLog(
+        account_id=current_user.account_id,
+        user_id=current_user.auth_user_id,
+        user_name=current_user.user_name,
+        user_role=current_user.user_role,
         action=f"Rejected purchase order by {required_role}",
+        table_name="purchase_orders",
+        record_id=purchase_order.purchase_order_number,
         details=payload.comment.strip(),
+        work_order_id=purchase_order.work_order_id,
     )
 
+    database.add(audit_record)
 
     create_notifications(
         database=database,
@@ -639,9 +714,13 @@ def reject_purchase_order(
         entity_type="purchase_order",
         entity_id=purchase_order.database_id,
         reference=purchase_order.purchase_order_number,
-        recipient_roles=["Staff", "Manager"],
+        recipient_roles=["Staff", "Manager","President", "Treasurer", "Board Member"],
+        exclude_user_id=current_user.database_id,
         send_email=True,
     )
 
+    database.commit()
+    database.refresh(purchase_order)
 
-    return commit_and_read(database, purchase_order)
+    return to_purchase_order_read(purchase_order, work_order, supplier)
+
