@@ -28,6 +28,7 @@ const english = {
     dashboard: "Dashboard",
     workOrders: "Work Orders",
     suppliers: "Suppliers",
+    purchaseOrders: "Purchase Orders",
     residents: "Residents",
     reports: "Reports",
     documents: "Documents",

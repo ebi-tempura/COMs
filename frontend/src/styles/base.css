@@ -39,7 +39,7 @@ textarea {
   }
   
 .login-card p {
-    margin: 0 0 24px;
+    margin: 0;
     color: #64748b;
   }
   
@@ -63,18 +63,34 @@ textarea {
     border-radius: 8px;
   }
   
-  .login-options {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
+.login-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  }
+
+.login-form .form-error {
+    color : red;
+    margin: 0;
+  }
+
 .checkbox-row {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
+.register-step h2{
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  animation: step-enter 280ms ease-out;
+}
+
 .register-step {
+  margin-top: 0;
   display: flex;
   flex-direction: column;
   gap: 18px;

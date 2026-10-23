@@ -1,65 +1,48 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useLanguage } from "../../i18n/LanguageContext";
+import { useAuth } from "../../auth/AuthContext";
 import { supabase } from "../../lib/supabaseClient";
 
-function Login({ setUserEmail }) {
+function Login() {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const {
+    user,
+    loading,
+    error: accountError,
+    refreshUser,
+  } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [busy, setBusy] = useState(false);
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (busy || loading) return;
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    setBusy(true);
+    setLoginError("");
 
-    if (error) {
-      console.error("LOGIN ERROR:", error);
-      return;
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) throw error;
+      // AuthContext loads /api/me before allowing navigation.
+    } catch (err) {
+      setLoginError(err.message || "Unable to sign in.");
+    } finally {
+      setBusy(false);
     }
-
-
-    const response = await fetch("http://127.0.0.1:8000/api/me", {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${data.session.access_token}`,
-      },
-    });
-
-    const result = await response.json();
-
-    console.log("API /ME STATUS:", response.status);
-    console.log("API /ME RESPONSE:", result);
-    console.log("ACCESS TOKEN:", data.session.access_token);
-
-    if (!response.ok) {
-      console.error("COMS AUTH ERROR:", result);
-      return;
-    }
-
-
-    const workOrdersResponse = await fetch(
-  "http://127.0.0.1:8000/api/work-orders",
-  {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${data.session.access_token}`,
-    },
   }
-);
 
-const workOrders = await workOrdersResponse.json();
-
-console.log("WORK ORDERS STATUS:", workOrdersResponse.status);
-console.log("WORK ORDERS:", workOrders);
-
-    setUserEmail(email);
-    navigate("/work-orders");
+  if (user && !loading) {
+    return <Navigate to="/work-orders" replace />;
   }
 
   return (
@@ -72,6 +55,27 @@ console.log("WORK ORDERS:", workOrders);
         <p>{t("login.subtitle")}</p>
 
         <form className="login-form" onSubmit={handleSubmit}>
+                    {(loginError || accountError) && (
+            <p className="form-error" role="alert">
+              {loginError || accountError}
+            </p>
+          )}
+
+          {accountError && (
+            <button
+              type="button"
+              disabled={busy || loading}
+              onClick={refreshUser}
+            >
+              Retry account connection
+            </button>
+          )}
+
+          {loading && (
+            <p role="status">Loading your COMs account…</p>
+          )}
+          
+          
           <label>
             {t("login.email")}
             <input
@@ -103,8 +107,12 @@ console.log("WORK ORDERS:", workOrders);
             <a>{t("login.forgotPassword")}</a>
           </div>
 
-          <button className="button" type="submit">
-            {t("login.signIn")}
+          <button
+            className="button"
+            type="submit"
+            disabled={busy || loading}
+          >
+            {busy || loading ? "Signing in…" : t("login.signIn")}
           </button>
 
           <button type="button" className="button.secondarybutton" onClick={() => navigate("/register")}>

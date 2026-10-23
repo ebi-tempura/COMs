@@ -1,5 +1,6 @@
 import Users from "./pages/Users/Users";
 import AcceptInvitation from "./pages/Users/AcceptInvitation";
+import RequireAuth from "./auth/RequireAuth";
 
 /**********************/
 
@@ -12,14 +13,14 @@ import AppLayout from "./layouts/AppLayout";
 import WorkOrders from "./pages/WorkOrders/WorkOrders";
 import Suppliers from "./pages/Suppliers/Suppliers";
 import Register from "./pages/Register/Register";
-import RoleSwitcher from "./components/security/RoleSwitcher";
+//import PurchaseOrders from "./pages/PurchaseOrders/PurchaseOrders";
 import LanguageSwitcher from "./components/common/LanguageSwitcher";
 import { useLanguage } from "./i18n/LanguageContext";
 
 function PlaceholderPage({ translationKey }) {
   const { t } = useLanguage();
   return <div>{t(translationKey)}</div>;
-}
+} 
 
 function App() {
   const [userEmail, setUserEmail] = useState("");
@@ -30,46 +31,47 @@ function App() {
 
       <div className="development-toolbar">
         <LanguageSwitcher />
-        <RoleSwitcher />
       </div>
 
       <Routes>
         <Route path="/accept-invitation" element={<AcceptInvitation />} />
-        <Route path="/users" element={<Users />} />
         <Route path="/register" element={<Register setUserEmail={setUserEmail} setName={setName} />} />
         
         <Route path="/login" element={<Login setUserEmail={setUserEmail} />} />
-
-        <Route element={<AppLayout />}>
-          <Route path="/" element={<Navigate to="/work-orders" replace />} />
-          <Route
-            path="/Dashboard"
-            element={<PlaceholderPage translationKey="placeholders.dashboard" />}
-          />
-          <Route
-            path="/work-orders"
-            element={<WorkOrders userEmail={userEmail} />}
-          />
-          <Route
-            path="/suppliers"
-            element={<Suppliers userEmail={userEmail} />}
-          />
-          <Route
-            path="/residents"
-            element={<PlaceholderPage translationKey="placeholders.residents" />}
-          />
-          <Route
-            path="/reports"
-            element={<PlaceholderPage translationKey="placeholders.reports" />}
-          />
-          <Route
-            path="/documents"
-            element={<PlaceholderPage translationKey="placeholders.documents" />}
-          />
-          <Route
-            path="/settings"
-            element={<Users />}
-          />
+        <Route element={<RequireAuth />}>
+          <Route path="/users" element={<Users />} />
+              
+          <Route element={<AppLayout />}>
+            <Route path="/" element={<Navigate to="/work-orders" replace />} />
+            <Route
+              path="/Dashboard"
+              element={<PlaceholderPage translationKey="placeholders.dashboard" />}
+            />
+            <Route
+              path="/work-orders"
+              element={<WorkOrders userEmail={userEmail} />}
+            />
+            <Route
+              path="/PurchaseOrder"
+              element={<PlaceholderPage translationKey="placeholders.purchaseOrders" />}
+            />
+            <Route
+              path="/suppliers"
+              element={<Suppliers userEmail={userEmail} />}
+            />
+            <Route
+              path="/reports"
+              element={<PlaceholderPage translationKey="placeholders.reports" />}
+            />
+            <Route
+              path="/documents"
+              element={<PlaceholderPage translationKey="placeholders.documents" />}
+            />
+            <Route
+              path="/settings"
+              element={<Users />}
+            />
+          </Route>
         </Route>
       </Routes>
     </>
