@@ -1,6 +1,14 @@
 import logging
+import os
+
+from urllib.parse import quote
+from services.notifications.email_sender import (
+    send_notification_email,
+    EmailSendError,
+)
 
 from fastapi import Depends, HTTPException, APIRouter
+from pydantic import BaseModel, ConfigDict, Field
 
 from sqlalchemy import  select
 from sqlalchemy.orm import Session
@@ -17,7 +25,7 @@ import secrets
 from sqlalchemy import update, func
 from sqlalchemy.exc import IntegrityError
 from models import AuditLog, UserInvitation
-from schemas.auth import UserInvitationCreate, InvitationAccept, UserRoleChange, UserStatusChange
+from schemas.auth import UserInvitationCreate, UserRoleChange, UserStatusChange
 from routers.building_account import verified_identity
 
 
@@ -130,29 +138,127 @@ def read_user(current_user: User = Depends(require_roles("Admin", "Manager", "Pr
         User.account_id == current_user.account_id).order_by(User.database_id)).all()]
 
 @router.post("/api/users/invitations", status_code=201)
-def invite_user(body: UserInvitationCreate, actor: User = Depends(require_roles("Admin")),
-                database: Session = Depends(get_db)):
+def invite_user(
+    body: UserInvitationCreate,
+    actor: User = Depends(require_roles("Admin")),
+    database: Session = Depends(get_db),
+):
     lock_admin(database, actor)
-    email = body.email.lower()
+
+    email = body.email.strip().lower()
     now = datetime.now(timezone.utc)
-    if database.scalar(select(User).where(func.lower(User.email) == email)):
-        raise HTTPException(409, "This email already belongs to a COMs account")
-    if database.scalar(select(UserInvitation).where(UserInvitation.account_id == actor.account_id,
-        UserInvitation.email == email, UserInvitation.accepted_at.is_(None),
-        UserInvitation.revoked_at.is_(None), UserInvitation.expires_at > now)):
-        raise HTTPException(409, "An unexpired invitation already exists; revoke it before inviting again")
+
+    if database.scalar(
+        select(User).where(func.lower(User.email) == email)
+    ):
+        raise HTTPException(
+            409,
+            "This email already belongs to a COMs account",
+        )
+
+    if database.scalar(
+        select(UserInvitation).where(
+            UserInvitation.account_id == actor.account_id,
+            UserInvitation.email == email,
+            UserInvitation.accepted_at.is_(None),
+            UserInvitation.revoked_at.is_(None),
+            UserInvitation.expires_at > now,
+        )
+    ):
+        raise HTTPException(
+            409,
+            "An unexpired invitation already exists; "
+            "revoke it before inviting again",
+        )
+
+    account = database.scalar(
+        select(BuildingAccount).where(
+            BuildingAccount.account_id == actor.account_id
+        )
+    )
+
     token = secrets.token_urlsafe(32)
-    invitation = UserInvitation(account_id=actor.account_id, email=email, user_role=body.user_role,
-        token_hash=sha256(token.encode()).hexdigest(), created_by_user_id=actor.database_id,
-        expires_at=now + timedelta(days=7))
+
+    invitation = UserInvitation(
+        account_id=actor.account_id,
+        email=email,
+        user_role=body.user_role,
+        token_hash=sha256(token.encode()).hexdigest(),
+        created_by_user_id=actor.database_id,
+        expires_at=now + timedelta(days=7),
+    )
+
     database.add(invitation)
     database.flush()
-    audit(database, actor, "Invited user", invitation.database_id,
-          f"Invited {email} as {body.user_role}", "user_invitations")
+
+    invitation_id = invitation.database_id
+    expires_at = invitation.expires_at
+    building_name = account.building_name
+
+    audit(
+        database,
+        actor,
+        "Invited user",
+        invitation_id,
+        f"Invited {email} as {body.user_role}",
+        "user_invitations",
+    )
+
+    # Save before sending so an emailed link refers to a committed invitation.
     database.commit()
-    # Only the creator receives the secret. It is never saved in plaintext or audited.
-    return {"database_id": invitation.database_id, "email": email, "user_role": body.user_role,
-            "expires_at": invitation.expires_at, "token": token}
+
+    frontend_url = os.getenv(
+        "FRONTEND_URL",
+        "http://localhost:5173",
+    ).rstrip("/")
+
+    invitation_url = (
+        f"{frontend_url}/accept-invitation"
+        f"#token={quote(token, safe='')}"
+    )
+
+    message = (
+        f"You have been invited to join {building_name} in COMs.\n\n"
+        f"Your assigned role: {body.user_role}\n\n"
+        f"Accept your invitation:\n{invitation_url}\n\n"
+        f"Use this email address to join: {email}\n\n"
+        "This invitation expires in seven days. "
+        "Your email must be verified before you can join.\n\n"
+        "If you were not expecting this invitation, "
+        "you can ignore this message."
+    )
+
+    try:
+        send_notification_email(
+            recipient=email,
+            subject="You are invited to join your building in COMs",
+            message=message,
+            idempotency_key=f"user-invitation-{invitation_id}",
+        )
+
+        email_status = "submitted"
+        result_message = (
+            f"Invitation email submitted for delivery to {email}."
+        )
+
+    except EmailSendError:
+        # Keep the invitation visible so the Admin can revoke it.
+        # A timeout can occur even when the provider accepted the email.
+        email_status = "unconfirmed"
+        result_message = (
+            "The invitation was created, but email delivery "
+            "could not be confirmed. Check the recipient's inbox. "
+            "If needed, revoke this invitation and create a new one."
+        )
+
+    return {
+        "database_id": invitation_id,
+        "email": email,
+        "user_role": body.user_role,
+        "expires_at": expires_at,
+        "email_status": email_status,
+        "message": result_message,
+    }
 
 @router.get("/api/users/invitations")
 def list_invitations(actor: User = Depends(require_roles("Admin")), database: Session = Depends(get_db)):
@@ -175,39 +281,123 @@ def revoke_invitation(invitation_id: int, actor: User = Depends(require_roles("A
         audit(database, actor, "Revoked invitation", invitation_id, "Invitation revoked", "user_invitations")
         database.commit()
 
-@router.post("/api/users/invitations/accept", response_model=UserRead, status_code=201)
-def accept_invitation(body: InvitationAccept, identity=Depends(get_supabase_user),
-                      database: Session = Depends(get_db)):
-    email = verified_identity(identity)
+INVITATION_TERMS_VERSION = "2026-10-26"
+
+
+class InvitationToken(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    token: str = Field(min_length=32, max_length=200)
+
+
+class InvitationCheck(InvitationToken):
+    email: str = Field(min_length=3, max_length=50)
+
+
+def invitation_for_token(database, token):
     invitation = database.scalar(select(UserInvitation).where(
-        UserInvitation.token_hash == sha256(body.token.encode()).hexdigest()))
+        UserInvitation.token_hash == sha256(token.encode()).hexdigest()
+    ))
     if invitation is None:
         raise HTTPException(404, "Invitation not found")
+    return invitation
+
+
+def check_invitation_building(database, invitation):
+    account = database.scalar(select(BuildingAccount).where(
+        BuildingAccount.account_id == invitation.account_id
+    ))
+    if account is None or account.account_status != "Active":
+        raise HTTPException(403, "Building account is not active")
+
+
+def check_pending_invitation(invitation):
+    expires = invitation.expires_at
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    if invitation.accepted_at or invitation.revoked_at or expires <= datetime.now(timezone.utc):
+        raise HTTPException(409, "Invitation has expired or is no longer available")
+
+
+@router.post("/api/users/invitations/validate")
+def validate_invitation(body: InvitationCheck, database: Session = Depends(get_db)):
+    # Public, token-protected check before creating a Supabase login.
+    invitation = invitation_for_token(database, body.token)
+    if body.email.strip().lower() != invitation.email.strip().lower():
+        raise HTTPException(403, "Use the email address invited by your Admin")
+    check_pending_invitation(invitation)
+    check_invitation_building(database, invitation)
+    if database.scalar(select(User).where(func.lower(User.email) == body.email.lower())):
+        raise HTTPException(409, "This email already belongs to a COMs account")
+    return {"valid": True}
+
+
+def signup_names(identity, token):
+    metadata = getattr(identity, "user_metadata", None) or {}
+    profile = metadata.get("invitation_signup")
+    if not isinstance(profile, dict):
+        raise HTTPException(422, "Signup details are missing. Use a fresh invitation and signup.")
+    if profile.get("invitation_hash") != sha256(token.encode()).hexdigest():
+        raise HTTPException(422, "Signup details belong to another invitation")
+    if (profile.get("accepted_terms") is not True
+            or profile.get("terms_version") != INVITATION_TERMS_VERSION):
+        raise HTTPException(422, "Terms acceptance is missing or out of date")
+    names = []
+    for key in ("first_name", "last_name"):
+        value = profile.get(key)
+        if not isinstance(value, str) or not 1 <= len(value.strip()) <= 50:
+            raise HTTPException(422, "A valid first and last name are required")
+        names.append(value.strip())
+    return names
+
+
+@router.post("/api/users/invitations/accept", response_model=UserRead)
+def accept_invitation(body: InvitationToken, identity=Depends(get_supabase_user),
+                      database: Session = Depends(get_db)):
+    # Identity comes from Supabase's verified get_user response, not the request body.
+    email = verified_identity(identity).strip().lower()
+    invitation = invitation_for_token(database, body.token)
     lock_account(database, invitation.account_id)
     database.refresh(invitation)
-    now = datetime.now(timezone.utc)
-    if invitation.accepted_at or invitation.revoked_at or invitation.expires_at.replace(tzinfo=timezone.utc) <= now:
-        raise HTTPException(409, "Invitation has expired or is no longer available")
-    if email != invitation.email:
+    if email != invitation.email.strip().lower():
         raise HTTPException(403, "Sign in with the invited email")
-    account = database.scalar(select(BuildingAccount).where(BuildingAccount.account_id == invitation.account_id))
-    if account.account_status != "Active":
-        raise HTTPException(403, "Building account is not active")
-    if database.scalar(select(User).where(User.auth_user_id == identity.id)):
-        raise HTTPException(409, "This identity already belongs to a building account")
-    user = User(account_id=invitation.account_id, auth_user_id=identity.id, email=email,
-        user_role=invitation.user_role, status="Active", user_name=body.user_name,
-        first_name=body.first_name, last_name=body.last_name)
+    check_invitation_building(database, invitation)
+    existing = database.scalar(select(User).where(User.auth_user_id == identity.id))
+
+    # A retry after successful acceptance returns the same membership.
+    if invitation.accepted_at:
+        if (existing and existing.account_id == invitation.account_id
+                and existing.email.lower() == email):
+            if existing.status != "Active":
+                raise HTTPException(403, "COMS User is not active")
+            return to_user_read(existing)
+        raise HTTPException(409, "Invitation already accepted")
+
+    check_pending_invitation(invitation)
+    if existing or database.scalar(select(User).where(func.lower(User.email) == email)):
+        raise HTTPException(409, "This identity or email already belongs to a COMs account")
+    first_name, last_name = signup_names(identity, body.token)
+
+    # User-editable signup metadata provides names and stated terms acceptance only.
+    # Account and role always come from the Admin's invitation.
+    user = User(
+        account_id=invitation.account_id, auth_user_id=identity.id, email=email,
+        user_role=invitation.user_role, status="Active",
+        first_name=first_name, last_name=last_name,
+        user_name=f"{first_name} {last_name}"[:50],
+    )
     try:
         database.add(user)
         database.flush()
-        invitation.accepted_at = now
-        audit(database, user, "Accepted invitation", user.database_id, "User activated through verified invitation")
+        invitation.accepted_at = datetime.now(timezone.utc)
+        audit(database, user, "Accepted invitation", user.database_id,
+              "User activated through verified invitation; "
+              f"terms version {INVITATION_TERMS_VERSION} reported accepted during signup")
         database.commit()
     except IntegrityError:
         database.rollback()
-        raise HTTPException(409, "This identity already belongs to a building account")
+        raise HTTPException(409, "This identity or email already belongs to a COMs account") from None
     return to_user_read(user)
+
 
 @router.patch("/api/users/{user_id}/role", response_model=UserRead)
 def change_role(user_id: int, body: UserRoleChange, actor: User = Depends(require_roles("Admin")),

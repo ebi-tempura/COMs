@@ -43,7 +43,10 @@ export const permissionMatrix = {
   },
 
   [ROLES.TREASURER]: {
-    [MODULES.SUPPLIERS]: [ACTIONS.VIEW],
+    [MODULES.SUPPLIERS]: [
+      ACTIONS.VIEW,
+      ACTIONS.APPROVE,
+      ACTIONS.REJECT],
     [MODULES.WORK_ORDERS]: [
       ACTIONS.VIEW,
       ACTIONS.APPROVE,

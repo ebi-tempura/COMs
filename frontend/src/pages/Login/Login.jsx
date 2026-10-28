@@ -50,7 +50,10 @@ function Login() {
    <main className="login-page">
 
       <section className="login-card">
-        <div className="login-logo">COMS</div>
+        <div className="login-logo">
+          <img src="/Logo-blue.png" alt="PAX Aurora" />
+        </div>
+
         <h1>{t("login.welcome")}</h1>
         <p>{t("login.subtitle")}</p>
 
@@ -113,7 +116,7 @@ function Login() {
             disabled={busy || loading}
           >
             {busy || loading ? "Signing in…" : t("login.signIn")}
-          </button>
+          </button> 
 
           <button type="button" className="button.secondarybutton" onClick={() => navigate("/register")}>
             {t("login.signUp")}

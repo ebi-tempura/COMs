@@ -731,4 +731,4 @@ def read_work_orders(
 
     records = database.scalars(statement).all()
 
-    return records 
+    return [to_work_order_read(record) for record in records]

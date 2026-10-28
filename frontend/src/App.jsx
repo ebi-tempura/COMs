@@ -13,7 +13,7 @@ import AppLayout from "./layouts/AppLayout";
 import WorkOrders from "./pages/WorkOrders/WorkOrders";
 import Suppliers from "./pages/Suppliers/Suppliers";
 import Register from "./pages/Register/Register";
-//import PurchaseOrders from "./pages/PurchaseOrders/PurchaseOrders";
+import PurchaseOrders from "./pages/PurchaseOrders/PurchaseOrders";
 import LanguageSwitcher from "./components/common/LanguageSwitcher";
 import { useLanguage } from "./i18n/LanguageContext";
 
@@ -28,10 +28,6 @@ function App() {
 
   return (
     <>
-
-      <div className="development-toolbar">
-        <LanguageSwitcher />
-      </div>
 
       <Routes>
         <Route path="/accept-invitation" element={<AcceptInvitation />} />
@@ -52,8 +48,8 @@ function App() {
               element={<WorkOrders userEmail={userEmail} />}
             />
             <Route
-              path="/PurchaseOrder"
-              element={<PlaceholderPage translationKey="placeholders.purchaseOrders" />}
+              path="/purchase-orders"
+              element={<PurchaseOrders/>}
             />
             <Route
               path="/suppliers"

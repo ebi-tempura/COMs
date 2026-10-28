@@ -28,6 +28,31 @@ router = APIRouter(
 BOARD_THRESHOLD = Decimal("10000.00")
 
 ### Response and Numbering Helpers ###
+@router.get("", response_model=list[PurchaseOrderRead])
+def list_purchase_orders(
+    current_user: User = Depends(
+        require_roles(
+            "Admin", "Staff", "Manager",
+            "President", "Board Member", "Treasurer",
+        )
+    ),
+    database: Session = Depends(get_db),
+):
+    records = database.scalars(
+        select(PurchaseOrder)
+        .where(PurchaseOrder.account_id == current_user.account_id)
+        .order_by(PurchaseOrder.database_id.desc())
+    ).all()
+
+    results = []
+
+    for record in records:
+        work_order, supplier = get_related_records(database, record)
+        results.append(
+            to_purchase_order_read(record, work_order, supplier)
+        )
+
+    return results
 
 def get_related_records(
     database: Session,

@@ -19,14 +19,23 @@ export function AuthProvider({ children }) {
     // Remove the old mock identity, not the Supabase session.
     localStorage.removeItem("currentUser");
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setUser(null);
-      setError("");
-      setLoading(Boolean(nextSession));
-      setSession(nextSession);
-      setReload((value) => value + 1);
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    setSession((currentSession) => {
+      const sameUser =
+        currentSession?.user?.id === nextSession?.user?.id;
+
+      const sameToken =
+        currentSession?.access_token === nextSession?.access_token;
+
+      // Ignore repeated events for the exact same session.
+      if (sameUser && sameToken) {
+        return currentSession;
+      }
+
+      return nextSession;
+    });
     });
 
     return () => subscription.unsubscribe();

@@ -69,7 +69,8 @@ function SupplierTable({
                     </button>
                   </Can>
 
-                  {supplier.status === SUPPLIER_STATUS.DRAFT && (
+                  {supplier.status === SUPPLIER_STATUS.DRAFT &&
+                    supplier.createdBy === user?.id && (
                     <Can module={MODULES.SUPPLIERS} action={ACTIONS.SUBMIT}>
                       <button
                         className="table-action-button"
@@ -123,13 +124,13 @@ function SupplierTable({
                     </>
                   )}
 
-                  {supplier.createdBy !== user.id &&
-                    ((supplier.status ===
-                      SUPPLIER_STATUS.PENDING_PRESIDENT_APPROVAL &&
-                      user.role === ROLES.PRESIDENT) ||
-                      (supplier.status ===
-                        SUPPLIER_STATUS.PENDING_BOARD_MEMBER_APPROVAL &&
-                        user.role === ROLES.BOARD_MEMBER)) && (
+                  {supplier.createdBy !== user?.id &&
+                    ((supplier.status === "Pending President Approval" &&
+                      user?.role === "President") ||
+                      (supplier.status === "Pending Treasurer Approval" &&
+                        user?.role === "Treasurer") ||
+                      (supplier.status === "Pending Board Member Approval" &&
+                        user?.role === "Board Member")) && (
                       <>
                         <Can module={MODULES.SUPPLIERS} action={ACTIONS.APPROVE}>
                           <button

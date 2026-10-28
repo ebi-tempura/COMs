@@ -48,6 +48,7 @@ class WorkOrderRead(BaseModel):
         "Pending Board Member Approval",
         "Approved",
         "Rejected",
+        "Rejected by Treasurer",
         "Rejected Work Order authorization by President",
         "Rejected Work Order authorization by Treasurer",
         "Rejected Work Order authorization by Board Member",

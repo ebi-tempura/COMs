@@ -29,17 +29,13 @@ async function handleLogout() {
       <aside className="sidebar">
         <div className="sidebar-brand">
           <div className="sidebar-logo">
-            <img src="../Logo.png" />
-            </div>
-          <div>
-            <h2>coms</h2>
-          </div>
+            <img src="../Logo-white.png" />
+            <p>{t("brand.tagline")}</p>
+            </div>      
         </div>
           <div>
-            <p>{t("brand.tagline")}</p>
           </div>
-
-
+         
         <nav className="sidebar-nav">
           <NavLink to="/Dashboard">{t("nav.dashboard")}</NavLink>
           <NavLink to="/work-orders">{t("nav.workOrders")}</NavLink>

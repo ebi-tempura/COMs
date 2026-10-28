@@ -1,30 +1,18 @@
-import { useState } from "react";
-import Button from "../common/Button";
-import { WORK_ORDER_STATUS, WORK_ORDER_COMPLETION_REPORT_STATUS } from "../../security/constants";
+import { useRef, useState } from "react";
 import { useLanguage } from "../../i18n/LanguageContext";
 
 const initialForm = {
   title: "",
-  supplier: "",
+  supplier_id: "",
   amount: "",
-  priority: "",
-  type: "",
+  priority: "Medium",
+  type: "Normal",
   category: "",
   location: "",
-  requestedBy: "",
-  targetDate: "",
+  target_date: "",
   description: "",
 };
 
-const suppliers = [
-  "Electro Services SA",
-  "Aqua Solutions",
-  "BuildWell Co.",
-  "Lift Experts",
-  "GreenCare",
-];
-const priorities = ["Low", "Medium", "High"];
-const workOrderTypes = ["Emergency", "Normal"];
 const categories = [
   "Electrical",
   "Plumbing",
@@ -32,192 +20,250 @@ const categories = [
   "Safety",
   "Landscaping",
 ];
-const requesters = ["Admin User", "Resident #203", "Resident #105"];
 
-function WorkOrderForm({ onCreateWorkOrder, workOrders,onCancel }) {
-  const { t, userName, valueLabel } = useLanguage();
-  const [formData, setFormData] = useState(initialForm);
+export default function WorkOrderForm({
+  suppliers = [],
+  currentUser,
+  disabled = false,
+  onCreateWorkOrder,
+  onCancel,
+}) {
+  const { t, valueLabel } = useLanguage();
+  const [formData, setFormData] = useState({ ...initialForm });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const lock = useRef(false);
 
   function handleChange(event) {
     const { name, value } = event.target;
-
-    setFormData((current) => ({
-      ...current,
-      [name]: value,
-    }));
+    setFormData((current) => ({ ...current, [name]: value }));
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
+    if (lock.current || disabled) return;
 
-    const newWorkOrder = {
-      id: `WO-${new Date().getFullYear()}-${String(workOrders.length + 1).padStart(4, "0")}`,
-      title: formData.title,
-      category: formData.category,
-      supplier: formData.supplier,
-      requestedBy: formData.requestedBy,
-      amount: Number(formData.amount),
-      status: WORK_ORDER_STATUS.DRAFT,
-      completionReportStatus: WORK_ORDER_COMPLETION_REPORT_STATUS.NOT_STARTED,
-      completionReportVersions: [],
-      completionReport:null,
-      priority: formData.priority,
-      type: formData.type,
-      targetDate: formData.targetDate,
-      location: formData.location,
-      description: formData.description,
+    setError("");
+
+    const payload = {
+      ...formData,
+      title: formData.title.trim(),
+      location: formData.location.trim(),
+      description: formData.description.trim(),
     };
 
-    onCreateWorkOrder(newWorkOrder);
-    setFormData(initialForm);
+    if (!payload.title || !payload.location || !payload.description) {
+      setError("Enter a title, location, and description.");
+      return;
+    }
+
+    if (
+      !Number.isFinite(Number(payload.amount)) ||
+      Number(payload.amount) <= 0
+    ) {
+      setError("The amount must be greater than zero.");
+      return;
+    }
+
+    lock.current = true;
+    setSaving(true);
+
+    try {
+      const saved = await onCreateWorkOrder(payload);
+      if (saved) setFormData({ ...initialForm });
+    } catch (err) {
+      setError(err.message || "Unable to save work order.");
+    } finally {
+      lock.current = false;
+      setSaving(false);
+    }
   }
 
   return (
-    <form className="form-grid" onSubmit={handleSubmit}>
-      <div className="form-group">
-        <label>{t("workOrderForm.title")}</label>
-        <input
-          name="title"
-          value={formData.title}
-          onChange={handleChange}
-          placeholder={t("workOrderForm.titlePlaceholder")}
-          required
-        />
-      </div>
+    <form onSubmit={handleSubmit}>
+      {error && (
+        <p role="alert" style={{ color: "#b91c1c" }}>{error}</p>
+      )}
 
-      <div className="form-group">
-        <label>{t("workOrderForm.supplier")}</label>
-        <select
-          name="supplier"
-          value={formData.supplier}
-          onChange={handleChange}
-          required
-        >
-          <option value="">{t("workOrderForm.selectSupplier")}</option>
-          {suppliers.map((supplier) => (
-            <option key={supplier} value={supplier}>
-              {supplier}
-            </option>
-          ))}
-        </select>
-      </div>
+      <fieldset
+        disabled={disabled || saving}
+        style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
+      >
+        <div className="form-grid">
+          <div className="form-group">
+            <label htmlFor="wo-title">{t("workOrderForm.title")}</label>
+            <input
+              id="wo-title"
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
+              maxLength={200}
+              required
+            />
+          </div>
 
-      <div className="form-group">
-        <label>{t("workOrderForm.amount")}</label>
-        <input
-          name="amount"
-          type="number"
-          value={formData.amount}
-          onChange={handleChange}
-          placeholder="$ 0.00"
-          required
-        />
-      </div>
+          <div className="form-group">
+            <label htmlFor="wo-supplier">{t("workOrderForm.supplier")}</label>
+            <select
+              id="wo-supplier"
+              name="supplier_id"
+              value={formData.supplier_id}
+              onChange={handleChange}
+              required
+            >
+              <option value="">{t("workOrderForm.selectSupplier")}</option>
+              {suppliers.map((supplier) => (
+                <option
+                  key={supplier.database_id}
+                  value={supplier.supplier_id}
+                >
+                  {supplier.supplier_name} — {supplier.supplier_id}
+                </option>
+              ))}
+            </select>
 
-      <div className="form-group">
-        <label>{t("workOrderForm.priority")}</label>
-        <select name="priority" value={formData.priority} onChange={handleChange}>
-          <option value="">{t("workOrderForm.selectPriority")}</option>
-          {priorities.map((priority) => (
-            <option key={priority} value={priority}>
-              {valueLabel("priority", priority)}
-            </option>
-          ))}
-        </select>
-      </div>
+            {!disabled && suppliers.length === 0 && (
+              <small>Create a supplier before creating a work order.</small>
+            )}
+          </div>
 
-      <div className="form-group">
-        <label>{t("workOrderForm.type")}</label>
-        <select name="type" value={formData.type} onChange={handleChange} required>
-          <option value="">{t("workOrderForm.selectType")}</option>
-          {workOrderTypes.map((type) => (
-            <option key={type} value={type}>
-              {valueLabel("workOrderType", type)}
-            </option>
-          ))}
-        </select>
-      </div>
+          <div className="form-group">
+            <label htmlFor="wo-amount">{t("workOrderForm.amount")}</label>
+            <input
+              id="wo-amount"
+              name="amount"
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={formData.amount}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-      <div className="form-group">
-        <label>{t("workOrderForm.category")}</label>
-        <select
-          name="category"
-          value={formData.category}
-          onChange={handleChange}
-          required
-        >
-          <option value="">{t("workOrderForm.selectCategory")}</option>
-          {categories.map((category) => (
-            <option key={category} value={category}>
-              {valueLabel("category", category)}
-            </option>
-          ))}
-        </select>
-      </div>
+          <div className="form-group">
+            <label htmlFor="wo-priority">{t("workOrderForm.priority")}</label>
+            <select
+              id="wo-priority"
+              name="priority"
+              value={formData.priority}
+              onChange={handleChange}
+              required
+            >
+              {["Low", "Medium", "High"].map((priority) => (
+                <option key={priority} value={priority}>
+                  {valueLabel("priority", priority)}
+                </option>
+              ))}
+            </select>
+          </div>
 
-      <div className="form-group">
-        <label>{t("workOrderForm.location")}</label>
-        <input
-          name="location"
-          value={formData.location}
-          onChange={handleChange}
-          placeholder={t("workOrderForm.locationPlaceholder")}
-          required
-        />
-      </div>
+          <div className="form-group">
+            <label htmlFor="wo-type">{t("workOrderForm.type")}</label>
+            <select
+              id="wo-type"
+              name="type"
+              value={formData.type}
+              onChange={handleChange}
+              required
+            >
+              {["Normal", "Emergency"].map((type) => (
+                <option key={type} value={type}>
+                  {valueLabel("workOrderType", type)}
+                </option>
+              ))}
+            </select>
+          </div>
 
-      <div className="form-group">
-        <label>{t("workOrderForm.requestedBy")}</label>
-        <select
-          name="requestedBy"
-          value={formData.requestedBy}
-          onChange={handleChange}
-          required
-        >
-          <option value="">{t("workOrderForm.selectRequester")}</option>
-          {requesters.map((requester) => (
-            <option key={requester} value={requester}>
-              {userName(requester)}
-            </option>
-          ))}
-        </select>
-      </div>
+          <div className="form-group">
+            <label htmlFor="wo-category">{t("workOrderForm.category")}</label>
+            <select
+              id="wo-category"
+              name="category"
+              value={formData.category}
+              onChange={handleChange}
+              required
+            >
+              <option value="">{t("workOrderForm.selectCategory")}</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {valueLabel("category", category)}
+                </option>
+              ))}
+            </select>
+          </div>
 
-      <div className="form-group">
-        <label>{t("workOrderForm.targetDate")}</label>
-        <input
-          name="targetDate"
-          type="date"
-          value={formData.targetDate}
-          onChange={handleChange}
-        />
-      </div>
+          <div className="form-group">
+            <label htmlFor="wo-location">{t("workOrderForm.location")}</label>
+            <input
+              id="wo-location"
+              name="location"
+              value={formData.location}
+              onChange={handleChange}
+              maxLength={100}
+              required
+            />
+          </div>
 
-      <div className="form-group form-wide">
-        <label>{t("workOrderForm.description")}</label>
-        <textarea
-          name="description"
-          value={formData.description}
-          onChange={handleChange}
-          placeholder={t("workOrderForm.descriptionPlaceholder")}
-          required
-        />
-      </div>
+          <div className="form-group">
+            <label htmlFor="wo-requester">
+              {t("workOrderForm.requestedBy")}
+            </label>
+            <input
+              id="wo-requester"
+              value={currentUser?.name || ""}
+              readOnly
+            />
+          </div>
 
-      <div className="attachment-box form-wide">
-        <strong>{t("workOrderForm.attachments")}</strong>
-        <p>{t("workOrderForm.dropFiles")}</p>
-        <button type="button">{t("workOrderForm.browseFiles")}</button>
-        <small>{t("workOrderForm.fileHelp")}</small>
-      </div>
+          <div className="form-group">
+            <label htmlFor="wo-date">{t("workOrderForm.targetDate")}</label>
+            <input
+              id="wo-date"
+              name="target_date"
+              type="date"
+              value={formData.target_date}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-      <div className="form-actions form-wide">
-        <Button type="submit" className="primary-action-button">
-          {t("workOrderForm.create")}
-        </Button>
-      </div>
+          <div className="form-group form-wide">
+            <label htmlFor="wo-description">
+              {t("workOrderForm.description")}
+            </label>
+            <textarea
+              id="wo-description"
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              maxLength={2000}
+              rows={4}
+              required
+            />
+          </div>
+
+          <div className="form-actions form-wide">
+            <button
+              type="submit"
+              className="primary-action-button"
+              disabled={suppliers.length === 0}
+            >
+              {saving ? "Saving…" : t("workOrderForm.create")}
+            </button>
+
+            {onCancel && (
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={onCancel}
+              >
+                Close form
+              </button>
+            )}
+          </div>
+        </div>
+      </fieldset>
     </form>
   );
 }
-
-export default WorkOrderForm;
