@@ -1,9 +1,9 @@
-import Can from "../security/Can";
 import {
   ROLES,
   WORK_ORDER_STATUS,
 } from "../../security/constants";
 import { useLanguage } from "../../i18n/LanguageContext";
+import WorkOrderProgress from "./WorkOrderProgress";
 
 const APPROVER_BY_STATUS = {
   [WORK_ORDER_STATUS.PENDING_PRESIDENT_APPROVAL]: ROLES.PRESIDENT,
@@ -19,8 +19,23 @@ export default function WorkOrderTable({
   onSubmitWorkOrder,
   onApproveWorkOrder,
   onRejectWorkOrder,
+  onOpenReport,
 }) {
   const { formatCurrency, statusLabel, t, valueLabel } = useLanguage();
+
+  const canSubmitReports = [
+  ROLES.ADMIN,
+  ROLES.MANAGER,
+  ROLES.STAFF,
+  ].includes(currentUser?.role);
+
+  const canViewAudit = [
+  ROLES.ADMIN,
+  ROLES.PRESIDENT,
+  ROLES.TREASURER,
+  ROLES.BOARD_MEMBER,
+  ].includes(currentUser?.role);
+
 
   return (
     <div className="table-wrapper">
@@ -30,12 +45,12 @@ export default function WorkOrderTable({
             <th>{t("workOrderTable.id")}</th>
             <th>{t("workOrderTable.title")}</th>
             <th>{t("workOrderTable.category")}</th>
-            <th>{t("workOrderTable.supplier")}</th>
-            <th>{t("workOrderTable.requestedBy")}</th>
             <th>{t("workOrderTable.amount")}</th>
             <th>{t("workOrderTable.status")}</th>
+            <th>Progress</th>
             <th>{t("workOrderTable.priority")}</th>
             <th>{t("workOrderTable.actions")}</th>
+            
           </tr>
         </thead>
 
@@ -58,8 +73,6 @@ export default function WorkOrderTable({
                 <td>{workOrder.id}</td>
                 <td>{workOrder.title}</td>
                 <td>{valueLabel("category", workOrder.category)}</td>
-                <td>{workOrder.supplier}</td>
-                <td>{workOrder.requestedBy}</td>
                 <td>{formatCurrency(workOrder.amount)}</td>
 
                 <td>
@@ -70,6 +83,10 @@ export default function WorkOrderTable({
                   >
                     {statusLabel(workOrder.status)}
                   </span>
+                </td>
+                
+                <td>
+                  <WorkOrderProgress workOrder={workOrder} />
                 </td>
 
                 <td>
@@ -88,6 +105,38 @@ export default function WorkOrderTable({
                     >
                       {t("workOrderTable.view")}
                     </button>
+
+                    {workOrder.type === "Emergency" && (
+                    
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => onOpenReport(workOrder.id, "emergency")}
+                    >
+                      {canSubmitReports &&
+                      workOrder.status === "Needs Emergency Information"
+                        ? "Emergency info"
+                        : "Emergency reports"}
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => onOpenReport(workOrder.id, "completion")}
+                  >
+                    Completion reports
+                  </button>
+
+                  {canViewAudit && (
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => onOpenReport(workOrder.id, "audit")}
+                    >
+                      Audit trail
+                    </button>
+                  )}
 
                     {canSubmit && (
                       <button

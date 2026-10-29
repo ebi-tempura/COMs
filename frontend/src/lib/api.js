@@ -5,7 +5,10 @@ export async function api(path, options = {}) {
   if (!session) throw new Error('Please sign in first.');
   const response = await fetch(`${apiUrl}${path}`, {
     ...options,
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}`, ...options.headers },
+  headers: {...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+    Authorization: `Bearer ${session.access_token}`,
+    ...options.headers,
+  },  
   });
   if (response.status === 204) return null;
   const result = await response.json();

@@ -71,10 +71,17 @@ function PurchaseOrdersPage({ user }) {
   const [lookupError, setLookupError] = useState("");
   const [message, setMessage] = useState("");
   const [reload, setReload] = useState(0);
+  const [attachmentOrder, setAttachmentOrder] = useState(null);
+
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [attachmentError, setAttachmentError] = useState(null);
+  const attachmentInputRef = useRef(null);
 
   const lock = useRef(false);
   const canCreate = CREATE_ROLES.includes(user.role);
   const canView = VIEW_ROLES.includes(user.role);
+
+
 
   useEffect(() => {
     let active = true;
@@ -193,6 +200,68 @@ function PurchaseOrdersPage({ user }) {
     setForm((current) => ({ ...current, [name]: value }));
   }
 
+  function handleFileSelection(event) {
+    const newFiles = Array.from(event.target.files || []);
+    event.target.value = "";
+
+    if (newFiles.length === 0) return;
+
+    setAttachmentError("");
+
+    // Keep existing files and skip duplicate selections.
+    const combinedFiles = [...selectedFiles];
+
+    for (const file of newFiles) {
+      const alreadySelected = combinedFiles.some(
+        (existing) =>
+          existing.name === file.name &&
+          existing.size === file.size &&
+          existing.lastModified === file.lastModified
+      );
+
+      if (!alreadySelected) {
+        combinedFiles.push(file);
+      }
+    }
+
+    if (combinedFiles.length > 5) {
+      setAttachmentError("You can select a maximum of 5 files.");
+      return;
+    }
+
+    if (
+      combinedFiles.some(
+        (file) => !/\.(pdf|jpe?g|png)$/i.test(file.name)
+      )
+    ) {
+      setAttachmentError("Only PDF, JPG, JPEG and PNG files are allowed.");
+      return;
+    }
+
+    if (
+      combinedFiles.some(
+        (file) => file.size === 0 || file.size > 10 * 1024 * 1024
+      )
+    ) {
+      setAttachmentError(
+        "Files must not be empty and cannot exceed 10 MiB each."
+      );
+      return;
+    }
+
+    const totalSize = combinedFiles.reduce(
+      (total, file) => total + file.size,
+      0
+    );
+
+    if (totalSize > 25 * 1024 * 1024) {
+      setAttachmentError("The selected files cannot exceed 25 MiB combined.");
+      return;
+    }
+
+    setSelectedFiles(combinedFiles);
+  }
+/*
   async function createOrder(event) {
     event.preventDefault();
     if (lock.current) return;
@@ -248,14 +317,212 @@ function PurchaseOrdersPage({ user }) {
         }),
       });
 
+      // The PO has been saved successfully.
       setOrders((current) => [saved, ...current]);
       setForm({ ...EMPTY_FORM });
       setStatusFilter("All");
       setSearch("");
-      setMessage(`${saved.purchase_order_number} saved as Draft.`);
-    } catch (err) {
+      setAttachmentError("");
+
+      // Keep a copy for uploading, then clear the creation form's selection.
+      const filesToUpload = [...selectedFiles];
+      setSelectedFiles([]);
+
+      if (filesToUpload.length === 0) {
+        setMessage(`${saved.purchase_order_number} saved as Draft.`);
+      } else {
+        setMessage(
+          `${saved.purchase_order_number} saved as Draft. Uploading attachments…`
+        );
+
+        const uploadData = new FormData();
+
+        filesToUpload.forEach((file) => {
+          uploadData.append("files", file);
+        });
+
+        try {
+          const uploadResult = await api(
+            `${PO_URL}/${encodeURIComponent(
+              saved.purchase_order_number
+            )}/attachments`,
+            {
+              method: "POST",
+              body: uploadData,
+            }
+          );
+
+          // This endpoint can return HTTP 200 even when individual files fail.
+          if (!Array.isArray(uploadResult.results)) {
+            throw new Error("Unexpected attachment upload response.");
+          }
+
+          const failedFiles = uploadResult.results.filter(
+            (result) => result.status_code !== 201
+          );
+
+          setMessage(
+            `${saved.purchase_order_number} saved as Draft. ` +
+            `${uploadResult.uploaded_count} attachment(s) uploaded; ` +
+            `${uploadResult.failed_count} failed.`
+          );
+
+          if (failedFiles.length > 0) {
+            setError(
+              failedFiles
+                .map(
+                  (result) =>
+                    `${result.original_filename}: ${
+                      result.error || "Upload failed."
+                    }`
+                )
+                .join(" ") +
+              ` The PO already exists as ${saved.purchase_order_number}. ` +
+              "Check its saved attachments before retrying. Do not create another PO."
+            );
+          }
+        } catch (uploadError) {
+          setMessage(`${saved.purchase_order_number} saved as Draft.`);
+
+          setError(
+            `Could not confirm all attachment uploads: ${uploadError.message} ` +
+            `The PO already exists as ${saved.purchase_order_number}. ` +
+            "Check its saved attachments before retrying. Do not create another PO."
+          );
+        }
+      */
+  async function createOrder(event) {
+    event.preventDefault();
+    if (lock.current) return;
+
+    setError("");
+    setMessage("");
+
+    if (!form.title.trim() || !form.description.trim()) {
+      setError("Enter a title and description.");
+      return;
+    }
+
+    if (
+      !approvedSuppliers.some(
+        (supplier) => supplier.supplier_id === form.supplier_id
+      )
+    ) {
+      setError("Select an approved supplier.");
+      return;
+    }
+
+    if (
+      form.work_order_number &&
+      !approvedWorkOrders.some(
+        (order) => order.work_order_number === form.work_order_number
+      )
+    ) {
+      setError("Select an eligible work order or choose No work order.");
+      return;
+    }
+
+    if (
+      !/^\d{1,10}(\.\d{1,2})?$/.test(form.amount) ||
+      Number(form.amount) <= 0
+    ) {
+      setError("Enter a positive amount with no more than two decimals.");
+      return;
+    }
+
+    lock.current = true;
+    setBusy(true);
+
+    try {
+      const saved = await api(PO_URL, {
+        method: "POST",
+        body: JSON.stringify({
+          title: form.title.trim(),
+          supplier_id: form.supplier_id,
+          work_order_number: form.work_order_number || null,
+          amount: form.amount,
+          priority: form.priority,
+          description: form.description.trim(),
+        }),
+      });
+
+      // The PO has been saved successfully.
+      setOrders((current) => [saved, ...current]);
+      setForm({ ...EMPTY_FORM });
+      setStatusFilter("All");
+      setSearch("");
+      setAttachmentError("");
+
+      // Keep a copy for uploading, then clear the creation form's selection.
+      const filesToUpload = [...selectedFiles];
+      setSelectedFiles([]);
+
+      if (filesToUpload.length === 0) {
+        setMessage(`${saved.purchase_order_number} saved as Draft.`);
+      } else {
+        setMessage(
+          `${saved.purchase_order_number} saved as Draft. Uploading attachments…`
+        );
+
+        const uploadData = new FormData();
+
+        filesToUpload.forEach((file) => {
+          uploadData.append("files", file);
+        });
+
+        try {
+          const uploadResult = await api(
+            `${PO_URL}/${encodeURIComponent(
+              saved.purchase_order_number
+            )}/attachments`,
+            {
+              method: "POST",
+              body: uploadData,
+            }
+          );
+
+          // This endpoint can return HTTP 200 even when individual files fail.
+          if (!Array.isArray(uploadResult.results)) {
+            throw new Error("Unexpected attachment upload response.");
+          }
+
+          const failedFiles = uploadResult.results.filter(
+            (result) => result.status_code !== 201
+          );
+
+          setMessage(
+            `${saved.purchase_order_number} saved as Draft. ` +
+            `${uploadResult.uploaded_count} attachment(s) uploaded; ` +
+            `${uploadResult.failed_count} failed.`
+          );
+
+          if (failedFiles.length > 0) {
+            setError(
+              failedFiles
+                .map(
+                  (result) =>
+                    `${result.original_filename}: ${
+                      result.error || "Upload failed."
+                    }`
+                )
+                .join(" ") +
+              ` The PO already exists as ${saved.purchase_order_number}. ` +
+              "Check its saved attachments before retrying. Do not create another PO."
+            );
+          }
+        } catch (uploadError) {
+          setMessage(`${saved.purchase_order_number} saved as Draft.`);
+
+          setError(
+            `Could not confirm all attachment uploads: ${uploadError.message} ` +
+            `The PO already exists as ${saved.purchase_order_number}. ` +
+            "Check its saved attachments before retrying. Do not create another PO."
+          );
+        }
+      }
+    } catch (err){
       setError(err.message || "Unable to create purchase order.");
-    } finally {
+    } finally{
       lock.current = false;
       setBusy(false);
     }
@@ -457,6 +724,61 @@ function PurchaseOrdersPage({ user }) {
                     rows={4}
                     required
                   />
+                </div>
+                
+                <div className="attachment-box form-wide">
+                  <strong>Attachments</strong>
+                  <p>Select an invoice or supporting documents.</p>
+
+                  <input
+                    ref={attachmentInputRef}
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    multiple
+                    hidden
+                    onChange={handleFileSelection}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => attachmentInputRef.current?.click()}
+                  >
+                    Browse files
+                  </button>
+
+                  <p>
+                    <small>
+                      Maximum 5 files, 10 MiB per file and 25 MiB combined.
+                      Browsing again to add more files.
+                    </small>
+                  </p>
+
+                  {attachmentError && (
+                    <p role="alert" style={{ color: "#b91c1c" }}>
+                      {attachmentError}
+                    </p>
+                  )}
+
+                  {selectedFiles.length > 0 && (
+                    <ul>
+                      {selectedFiles.map((file, index) => (
+                        <li key={`${file.name}-${index}`}>
+                          {file.name} — {(file.size / 1024).toFixed(1)} KiB
+                          {" "}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelectedFiles((current) =>
+                                current.filter((_, position) => position !== index)
+                              )
+                            }
+                          >
+                            X
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
 
                 <div className="form-actions form-wide">

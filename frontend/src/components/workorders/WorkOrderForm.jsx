@@ -242,6 +242,13 @@ export default function WorkOrderForm({
               required
             />
           </div>
+          
+          <div className="attachment-box form-wide"> 
+            <strong>{t("supplierForm.attachments")}</strong>
+            <p>{t("supplierForm.dropFiles")}</p>
+            <button type="button">{t("supplierForm.browseFiles")}</button>
+            <small>{t("supplierForm.fileHelp")}</small>
+          </div>
 
           <div className="form-actions form-wide">
             <button

@@ -210,7 +210,7 @@ def upload_purchase_order_attachments(
         purchase_order = get_purchase_order_or_404(
             database, current_user.account_id, purchase_order_number
         )
-        if purchase_order.status != "Approved":
+        if purchase_order.status not in ("Draft", "Approved"):
             raise HTTPException(
                 status_code=409,
                 detail="Invoices can only be attached to an approved purchase order",

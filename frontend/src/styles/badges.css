@@ -29,7 +29,7 @@
     color: #c2410c;
   }  
 
-.status-rejected {
+.status-rejected, .status {
     background: #fee2e2;
     color: #dc2626;
   }

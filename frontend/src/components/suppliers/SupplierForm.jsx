@@ -147,10 +147,10 @@ function SupplierForm({ onCreateSupplier }) {
       </div>
 
       <div className="attachment-box form-wide">
-        <strong>{t("supplierForm.attachments")}</strong>
-        <p>{t("supplierForm.dropFiles")}</p>
-        <button type="button">{t("supplierForm.browseFiles")}</button>
-        <small>{t("supplierForm.fileHelp")}</small>
+        <strong>Attachments</strong>
+        <p>Attach an invoice or supporting document.</p>
+        <button type="button">Browse files</button>
+        <small>PDF, JPG or PNG. Maximum 10 MB per file.</small>
       </div>
 
       <div className="form-actions">

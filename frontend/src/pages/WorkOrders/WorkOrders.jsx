@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import Card from "../../components/common/Card";
 import WorkOrderForm from "../../components/workorders/WorkOrderForm";
 import WorkOrderTable from "../../components/workorders/WorkOrderTable";
-import WorkOrderDetailsPanel from "../../components/workorders/WorkOrderDetailsPanel";
-import WorkOrderCompletionReportForm from "../../components/workorders/WorkOrderCompletionReportForm";
+import WorkOrderModal from "../../components/workorders/WorkOrderModal";
 import { useAuth } from "../../auth/AuthContext";
 import { useLanguage } from "../../i18n/LanguageContext";
 import { api } from "../../lib/api";
+import { isAuthSessionMissingError } from "@supabase/supabase-js";
 
 const WORK_ORDERS_URL = "/api/work_orders/api/work-orders";
 const SUPPLIERS_URL = "/api/suppliers/api/suppliers";
@@ -62,7 +62,6 @@ function WorkOrdersPage({ user }) {
   const { t, statusLabel } = useLanguage();
   const [workOrders, setWorkOrders] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
-  const [selectedId, setSelectedId] = useState(null);
   const [showForm, setShowForm] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -73,6 +72,9 @@ function WorkOrdersPage({ user }) {
   const [message, setMessage] = useState("");
   const [reload, setReload] = useState(0);
   const lock = useRef(false);
+  
+  const [reportModal, setReportModal] = useState(null);
+
 
   const canCreate = ["Admin", "Manager", "Staff"].includes(user.role);
 
@@ -169,28 +171,6 @@ function WorkOrdersPage({ user }) {
       lock.current = false;
       setBusy(false);
     }
-
-    const creationEvent = createAuditEvent({
-      action: ACTIONS.CREATE,
-      entityType: "Work Order",
-      entityId: baseWorkOrder.id,
-      entityVersion: baseWorkOrder.version,
-      fromStatus: null,
-      toStatus: WORK_ORDER_STATUS.DRAFT,
-      user,
-      timestamp,
-      changes: Object.entries(newWorkOrder).map(([field, value]) => ({
-        field,
-        oldValue: null,
-        newValue: value,
-      })),
-    });
-
-    const preparedWorkOrder = {
-      ...baseWorkOrder,
-      auditTrail: [creationEvent],
-      approvalHistory: [creationEvent],
-    };
   }
 
   async function runAction(workOrderId, action) {
@@ -260,96 +240,10 @@ function WorkOrdersPage({ user }) {
   });
 
   const statuses = [...new Set(workOrders.map((item) => item.status))];
-  const selected = workOrders.find((item) => item.id === selectedId);
-
-
-  function handleStartWork(workOrderId) {
-    try {
-      updateWorkOrder(workOrderId, (workOrder) => startWorkOrder(workOrder, user));
-    } catch (error) {
-      showWorkflowError(error);
-    }
-  }
-
-  function handleSubmitCompletion(workOrderId, completionReport) {
-    try {
-      updateWorkOrder(workOrderId, (workOrder) => {
-        const nextVersion =
-          (Number.isInteger(workOrder.completionVersion)
-            ? workOrder.completionVersion
-            : 0) + 1;
-  
-        const timestamp = new Date().toISOString();
-  
-        const reportVersion = {
-          version: nextVersion,
-          status: WORK_ORDER_COMPLETION_REPORT_STATUS.SUBMITTED,
-  
-          submittedAt: timestamp,
-  
-          submittedBy: {
-            userId: user.id,
-            userName: user.name,
-            role: user.role,
-          },
-  
-          report: {
-            ...completionReport,
-          },
-        };
-  
-        const workOrderWithReport = {
-          ...workOrder,
-  
-          // Latest editable report
-          completionReport: {
-            ...completionReport,
-          },
-  
-          // Permanent version history
-          completionReportVersions: [
-            ...(workOrder.completionReportVersions ?? []),
-            reportVersion,
-          ],
-        };
-  
-        return submitWorkOrderCompletion(
-          workOrderWithReport,
-          user
-        );
-      });
-  
-      setCompletionReportWorkOrderId(null);
-    } catch (error) {
-      showWorkflowError(error);
-    }
-  }
-
-  function handleApproveCompletion(workOrderId) {
-    try {
-      updateWorkOrder(workOrderId, (workOrder) =>
-        approveWorkOrderCompletion(workOrder, user)
-      );
-    } catch (error) {
-      showWorkflowError(error);
-    }
-  }
-
-  function handleRejectCompletion(workOrderId) {
-    const comment = window.prompt(t("workOrders.completionRejectionPrompt"));
-
-    if (comment === null) {
-      return;
-    }
-
-    try {
-      updateWorkOrder(workOrderId, (workOrder) =>
-        rejectWorkOrderCompletion(workOrder, user, comment)
-      );
-    } catch (error) {
-      showWorkflowError(error);
-    }
-  }
+    
+  const modalWorkOrder = workOrders.find(
+    (item) => item.id === reportModal?.id
+  );
 
   return (
     <div className="page-container">
@@ -446,67 +340,24 @@ function WorkOrdersPage({ user }) {
           workOrders={filteredWorkOrders}
           currentUser={user}
           disabled={busy || loading}
-          onViewWorkOrder={setSelectedId}
+          onViewWorkOrder={(id) => setReportModal({id, mode: "details"})}
           onSubmitWorkOrder={handleSubmitWorkOrder}
           onApproveWorkOrder={(id) => handleReview(id, "approve")}
           onRejectWorkOrder={(id) => handleReview(id, "reject")}
-          onStartWork={handleStartWork}
-          onSubmitCompletion={setCompletionReportWorkOrderId}
-          onApproveCompletion={handleApproveCompletion}
-          onRejectCompletion={handleRejectCompletion}
+          onOpenReport={(id, mode) => setReportModal({id, mode})}
         />
       </Card>
- 
-      {selected && (
-        <Card>
-          <div className="panel-title">
-            <h2>{selected.id}</h2>
-            <button type="button" onClick={() => setSelectedId(null)}>
-              Close
-            </button>
-          </div>
 
-          <h3>{selected.title}</h3>
-          <p style={{ whiteSpace: "pre-wrap" }}>{selected.description}</p>
-          <p><strong>Supplier:</strong> {selected.supplier}</p>
-          <p><strong>Type:</strong> {selected.type}</p>
-          <p><strong>Location:</strong> {selected.location}</p>
-          <p><strong>Target date:</strong> {selected.targetDate}</p>
-          <p><strong>Status:</strong> {statusLabel(selected.status)}</p>
-          <p><strong>Created by:</strong> {selected.requestedBy}</p>
-        </Card>
+      {reportModal && modalWorkOrder && (
+        <WorkOrderModal
+          key={`${user.account_id}:${user.id}:${reportModal.id}:${reportModal.mode}`}
+          mode={reportModal.mode}
+          workOrder={modalWorkOrder}
+          currentUser={user}
+          onClose={() => setReportModal(null)}
+          onChanged={() => setReload((value) => value + 1)}
+        />
       )}
-      <Can
-        module={MODULES.WORK_ORDERS}
-        action={ACTIONS.COMPLETE_WORK}
-     >
-      <Card>
-          <WorkOrderCompletionReportForm
-          workOrder={completionReportWorkOrder}
-          initialReport={completionReportWorkOrder.completionReport}
-          onSubmitReport={(completionReport) =>
-            handleSubmitCompletion(
-              completionReportWorkOrder.id,
-              completionReport
-            )
-          }
-          onCancel={() => setCompletionReportWorkOrderId(null)}
-          />
-        </Card>
-        </Can>
-      )}
-
-
-        {selectedWorkOrder && (
-          <Card>
-            <h2>{t("workOrders.detailsTitle")}</h2>
-            <WorkOrderDetailsPanel
-              workOrder={selectedWorkOrder}
-              onClose={() => setSelectedWorkOrderId(null)}
-            />
-          </Card>
-        )}
-        
     </div>
   );
 }

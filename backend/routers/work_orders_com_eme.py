@@ -519,7 +519,6 @@ def approve_work_completion_by_treasurer(
             status_code=403,
             detail="Work order completion creator cannot approve it",
         )
-
     needs_board_approval = (
         work_order.type == "Emergency"
         or work_order.priority == "High"
@@ -532,6 +531,7 @@ def approve_work_completion_by_treasurer(
         completion_record.status = "Pending Board Member Approval"
     else:
         completion_record.status = "Approved"
+        work_order.status = "Completed"
 
     audit_record = AuditLog(
         account_id=current_user.account_id,
@@ -636,6 +636,7 @@ def approve_work_completion_by_board_member(
         )
 
     completion_record.status = "Approved"
+    work_order.status = "Approved"
 
     audit_record = AuditLog(
         account_id=current_user.account_id,

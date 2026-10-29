@@ -54,6 +54,62 @@
   animation: step-enter 280ms ease-out;
 }
 
+
+/* Keep wide tables from stretching the whole page */
+.table-wrapper {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+}
+
+/* Allow text and action buttons to wrap */
+.data-table th,
+.data-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.icon-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Let search/filter controls wrap too */
+.panel-title,
+.table-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.table-tools input,
+.table-tools select {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding: 12px;
+  }
+
+  .card {
+    padding: 12px;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 8px;
+  }
+}
+
 @keyframes step-enter {
   from {
     opacity: 0;
