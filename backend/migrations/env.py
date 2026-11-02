@@ -1,5 +1,4 @@
 import sys
-import models_.notifications
 
 from pathlib import Path
 from logging.config import fileConfig
@@ -18,6 +17,7 @@ sys.path.append(
 )
 
 import models
+import models_.notifications
 from database import Base, DATABASE_URL
 
 # Interpret the config file for Python logging.
@@ -32,7 +32,7 @@ if config.config_file_name is not None:
 
 config.set_main_option(
     "sqlalchemy.url",
-    DATABASE_URL,
+    DATABASE_URL.replace("%","%%"), 
 )
 
 target_metadata = Base.metadata

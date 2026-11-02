@@ -22,6 +22,7 @@ from auth import get_supabase_user
 
 from services.notifications.events import NotificationEvent
 from services.notifications.notification_service import create_notifications
+from services.numbering import lock_account_numbering
 
 router = APIRouter(    
     prefix="/api/suppliers",
@@ -62,6 +63,8 @@ def create_supplier(
     current_user: User = Depends(require_roles("Admin", "Manager", "Staff")),
     database:  Session =Depends(get_db),
 ):
+    lock_account_numbering(database, current_user.account_id)
+
 
     record = Supplier(
     account_id =current_user.account_id,

@@ -168,7 +168,7 @@ const english = {
     dateActivity: "Date and time of activity",
   },
   suppliers: {
-    title: "Suppliers",
+    title: "Supplier Directory",
     subtitle:
       "Manage companies and individual contractors approved for condominium work.",
     createTitle: "Create a New Supplier",

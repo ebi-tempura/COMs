@@ -106,10 +106,16 @@ class WorkOrder(Base):
 class WorkCompletion(Base):
 
     __tablename__ = "work_order_completion"
-    __table_args__= {"sqlite_autoincrement": True}
-
+    __table_args__ = (
+        UniqueConstraint(
+            "work_order_id",
+            "completion_number",
+            name="uq_completion_work_order_number",
+        ),
+        {"sqlite_autoincrement": True},
+    )
     database_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    completion_number: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
+    completion_number: Mapped[str] = mapped_column(String(30), nullable=False)
 
     work_order_id: Mapped[int] = mapped_column(
     ForeignKey("work_orders.database_id"),
@@ -138,13 +144,14 @@ class WorkOrderAttachment(Base):
     __tablename__ = "work_order_attachments"
 
     __table_args__ = (
+        UniqueConstraint("account_id","attachment_number",name="uq_wo_attachments_account_number",),
         CheckConstraint("size_bytes > 0", name="ck_work_order_attachments_size_positive"),
         CheckConstraint("mime_type IN ('application/pdf', 'image/jpeg', 'image/png')", name="ck_work_order_attachments_mime_type_valid"),
         {"sqlite_autoincrement": True},
     )
 
     database_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    attachment_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    attachment_number: Mapped[str] = mapped_column(String(50), nullable=False)
     work_order_id: Mapped[int] = mapped_column(ForeignKey("work_orders.database_id"), nullable=False, index=True)
     account_id: Mapped[str] = mapped_column(ForeignKey("building_account.account_id"), nullable=False, index=True)
     uploaded_by_user_id: Mapped[int] = mapped_column(ForeignKey("User_table.database_id"), nullable=False, index=True)
@@ -160,10 +167,16 @@ class WorkOrderAttachment(Base):
 class EmergencyWorkOrder(Base):
 
     __tablename__ = "work_order_emergency"
-    __table_args__= {"sqlite_autoincrement": True}
-
+    __table_args__ = (
+        UniqueConstraint(
+            "work_order_id",
+            "emergency_number",
+            name="uq_emergency_work_order_number",
+        ),
+        {"sqlite_autoincrement": True},
+    )
     database_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    emergency_number: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
+    emergency_number: Mapped[str] = mapped_column(String(30), nullable=False)
     work_order_id: Mapped[int] = mapped_column(ForeignKey("work_orders.database_id"),nullable=False,index=True,)
     status: Mapped[str] = mapped_column(String(50), nullable=False, default= "Draft",)
     created_by_user_id: Mapped[int] = mapped_column(ForeignKey("User_table.database_id"), nullable=False)
@@ -249,8 +262,13 @@ class PurchaseOrder(Base):
     __table_args__ = (
         CheckConstraint("amount > 0", name="ck_purchase_orders_amount_positive"),
         CheckConstraint("priority IN ('Low', 'Medium', 'High')", name="ck_purchase_orders_priority_valid"),
-        CheckConstraint("status IN (,'Draft', 'Pending President Approval', 'Pending Treasurer Approval', 'Pending Board Member Approval', 'Approved', 'Rejected by President', 'Rejected by Treasurer', 'Rejected by Board Member')", name="ck_purchase_orders_status_valid"),
-        UniqueConstraint("account_id", "purchase_order_number", name="uq_purchase_orders_account_number"),
+        CheckConstraint(
+            "status IN ('Draft', 'Pending President Approval', "
+            "'Pending Treasurer Approval', 'Pending Board Member Approval', "
+            "'Approved', 'Rejected by President', 'Rejected by Treasurer', "
+            "'Rejected by Board Member')",
+            name="ck_purchase_orders_status_valid",
+        ),        UniqueConstraint("account_id", "purchase_order_number", name="uq_purchase_orders_account_number"),
         {"sqlite_autoincrement": True},
     )
 

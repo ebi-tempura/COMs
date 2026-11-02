@@ -282,7 +282,6 @@ function handleResubmitSupplier() {
         <Card>
           <div className="panel-title">
             <div>
-              <h2>{t("suppliers.directory")}</h2>
             </div>
 
             <div className="table-tools">
@@ -304,7 +303,7 @@ function handleResubmitSupplier() {
               </select>
 
               <button className="secondary-button">{t("common.filter")}</button>
-              <button className="secondary-button">{t("common.export")}</button>
+              <button className="secondary-button">{t("common.export")}</button> 
             </div>
           </div>
 

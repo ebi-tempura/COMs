@@ -16,6 +16,7 @@ from schemas.work_orders import  WorkOrderCreate, WorkOrderRead
 from users import get_current_user
 from services.notifications.events import NotificationEvent
 from services.notifications.notification_service import create_notifications
+from services.numbering import lock_account_numbering
 
 router = APIRouter(    
     prefix="/api/work_orders",
@@ -57,6 +58,7 @@ def create_work_order(
     current_user: User = Depends(require_roles("Admin", "Manager", "Staff")),
     database: Session = Depends(get_db),
 ):
+    lock_account_numbering(database, current_user.account_id)
 
     supplier = database.scalar(
     select(Supplier).where(

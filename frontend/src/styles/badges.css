@@ -29,10 +29,14 @@
     color: #c2410c;
   }  
 
-.status-rejected, .status {
+.status-rejected, 
+.status-rejected-by-treasurer, 
+.status-rejected-by-president,
+.status-rejected-by-board-member {
     background: #fee2e2;
     color: #dc2626;
   }
+
 
 /* Only the dots*/  
 .priority-dot {

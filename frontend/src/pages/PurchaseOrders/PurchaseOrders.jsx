@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import Card from "../../components/common/Card";
 import { useAuth } from "../../auth/AuthContext";
-import { api } from "../../lib/api";
+import { api, apiDownload } from "../../lib/api";
+
+function getStatusClass(status) {
+  return status.toLowerCase().replaceAll(" ", "-");
+}
 
 const PO_URL = "/api/purchase-orders";
 const SUPPLIERS_URL = "/api/suppliers/api/suppliers";
@@ -261,136 +265,6 @@ function PurchaseOrdersPage({ user }) {
 
     setSelectedFiles(combinedFiles);
   }
-/*
-  async function createOrder(event) {
-    event.preventDefault();
-    if (lock.current) return;
-
-    setError("");
-    setMessage("");
-
-    if (!form.title.trim() || !form.description.trim()) {
-      setError("Enter a title and description.");
-      return;
-    }
-
-    if (
-      !approvedSuppliers.some(
-        (supplier) => supplier.supplier_id === form.supplier_id
-      )
-    ) {
-      setError("Select an approved supplier.");
-      return;
-    }
-
-    if (
-      form.work_order_number &&
-      !approvedWorkOrders.some(
-        (order) => order.work_order_number === form.work_order_number
-      )
-    ) {
-      setError("Select an eligible work order or choose No work order.");
-      return;
-    }
-
-    if (
-      !/^\d{1,10}(\.\d{1,2})?$/.test(form.amount) ||
-      Number(form.amount) <= 0
-    ) {
-      setError("Enter a positive amount with no more than two decimals.");
-      return;
-    }
-
-    lock.current = true;
-    setBusy(true);
-
-    try {
-      const saved = await api(PO_URL, {
-        method: "POST",
-        body: JSON.stringify({
-          title: form.title.trim(),
-          supplier_id: form.supplier_id,
-          work_order_number: form.work_order_number || null,
-          amount: form.amount,
-          priority: form.priority,
-          description: form.description.trim(),
-        }),
-      });
-
-      // The PO has been saved successfully.
-      setOrders((current) => [saved, ...current]);
-      setForm({ ...EMPTY_FORM });
-      setStatusFilter("All");
-      setSearch("");
-      setAttachmentError("");
-
-      // Keep a copy for uploading, then clear the creation form's selection.
-      const filesToUpload = [...selectedFiles];
-      setSelectedFiles([]);
-
-      if (filesToUpload.length === 0) {
-        setMessage(`${saved.purchase_order_number} saved as Draft.`);
-      } else {
-        setMessage(
-          `${saved.purchase_order_number} saved as Draft. Uploading attachments…`
-        );
-
-        const uploadData = new FormData();
-
-        filesToUpload.forEach((file) => {
-          uploadData.append("files", file);
-        });
-
-        try {
-          const uploadResult = await api(
-            `${PO_URL}/${encodeURIComponent(
-              saved.purchase_order_number
-            )}/attachments`,
-            {
-              method: "POST",
-              body: uploadData,
-            }
-          );
-
-          // This endpoint can return HTTP 200 even when individual files fail.
-          if (!Array.isArray(uploadResult.results)) {
-            throw new Error("Unexpected attachment upload response.");
-          }
-
-          const failedFiles = uploadResult.results.filter(
-            (result) => result.status_code !== 201
-          );
-
-          setMessage(
-            `${saved.purchase_order_number} saved as Draft. ` +
-            `${uploadResult.uploaded_count} attachment(s) uploaded; ` +
-            `${uploadResult.failed_count} failed.`
-          );
-
-          if (failedFiles.length > 0) {
-            setError(
-              failedFiles
-                .map(
-                  (result) =>
-                    `${result.original_filename}: ${
-                      result.error || "Upload failed."
-                    }`
-                )
-                .join(" ") +
-              ` The PO already exists as ${saved.purchase_order_number}. ` +
-              "Check its saved attachments before retrying. Do not create another PO."
-            );
-          }
-        } catch (uploadError) {
-          setMessage(`${saved.purchase_order_number} saved as Draft.`);
-
-          setError(
-            `Could not confirm all attachment uploads: ${uploadError.message} ` +
-            `The PO already exists as ${saved.purchase_order_number}. ` +
-            "Check its saved attachments before retrying. Do not create another PO."
-          );
-        }
-      */
   async function createOrder(event) {
     event.preventDefault();
     if (lock.current) return;
@@ -798,8 +672,6 @@ function PurchaseOrdersPage({ user }) {
 
       <Card>
         <div className="panel-title">
-          <h2>Purchase-order register</h2>
-
           <div className="table-tools">
             <input
               aria-label="Search purchase orders"
@@ -833,6 +705,7 @@ function PurchaseOrdersPage({ user }) {
                 <th>Work order</th>
                 <th>Amount</th>
                 <th>Status</th>
+                <th>Attachments</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -862,7 +735,20 @@ function PurchaseOrdersPage({ user }) {
                     </td>
                     <td>{order.work_order_number || "—"}</td>
                     <td>{money.format(Number(order.amount))}</td>
-                    <td>{order.status}</td>
+                    <td>
+                      <span className= {`status-badge status-${getStatusClass(order.status)}`}>
+                      {order.status?.toLowerCase().startsWith("reject")
+                        ? "Rejected"  
+                        : order.status}
+                      </span>
+                    </td>
+
+                    <td> <POAttachmentsCell
+                          purchaseOrderNumber={order.purchase_order_number}
+                          userRole={user.role}
+                        refreshKey={`${reload}:${busy}`}
+                    /></td>
+                    
                     <td>
                       <div className="icon-actions">
                         {order.status === "Draft" && canCreate && (
@@ -907,7 +793,7 @@ function PurchaseOrdersPage({ user }) {
 
               {!loading && filteredOrders.length === 0 && (
                 <tr>
-                  <td colSpan={7}>No purchase orders found.</td>
+                  <td colSpan={8}>No purchase orders found.</td>
                 </tr>
               )}
             </tbody>
@@ -916,4 +802,142 @@ function PurchaseOrdersPage({ user }) {
       </Card>
     </div>
   );
+  function POAttachmentsCell({ purchaseOrderNumber, userRole, refreshKey }) {
+  const [attachments, setAttachments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+  const [error, setError] = useState("");
+  const [downloading, setDownloading] = useState(null);
+  const [retry, setRetry] = useState(0);
+  const downloadLock = useRef(false);
+
+  const canRead = [
+    "Admin",
+    "Manager",
+    "Staff",
+    "President",
+    "Treasurer",
+    "Board Member",
+  ].includes(userRole);
+
+  const attachmentsUrl =
+    `${PO_URL}/${encodeURIComponent(purchaseOrderNumber)}/attachments`;
+
+  useEffect(() => {
+    if (!canRead) {
+      setAttachments([]);
+      setLoading(false);
+      return;
+    }
+
+    let active = true;
+    const controller = new AbortController();
+
+    setLoading(true);
+    setError("");
+
+    api(attachmentsUrl, { signal: controller.signal })
+      .then((result) => {
+        if (!Array.isArray(result)) {
+          throw new Error("Invalid attachment list.");
+        }
+
+        if (active) setAttachments(result);
+      })
+      .catch((err) => {
+        if (active) {
+          setAttachments([]);
+          setError(err.message || "Unable to load attachments.");
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [attachmentsUrl, canRead, refreshKey, retry]);
+
+  async function downloadAttachment(attachment) {
+    if (!canRead || downloadLock.current) return;
+
+    downloadLock.current = true;
+    setDownloading(attachment.attachment_number);
+    setError("");
+
+    try {
+      await apiDownload(
+        `${attachmentsUrl}/${encodeURIComponent(
+          attachment.attachment_number
+        )}/download`,
+        attachment.original_filename
+      );
+    } catch (err) {
+      setError(err.message || "Unable to download attachment.");
+    } finally {
+      downloadLock.current = false;
+      setDownloading(null);
+    }
+  }
+
+  if (!canRead) return <span>Not permitted</span>;
+  if (loading) return <span>Loading…</span>;
+
+  return (
+    <div>
+      {error && (
+        <div>
+          <p role="alert" style={{ color: "#b91c1c" }}>
+            {error}
+          </p>
+          <button
+            type="button"
+            onClick={() => setRetry((value) => value + 1)}
+          >
+            Refresh attachments
+          </button>
+        </div>
+      )}
+
+      {attachments.length > 0 ? (
+        <>
+          <button
+            type="button"
+            className="table-action-button"
+            aria-expanded={expanded}
+            onClick={() => setExpanded((current) => !current)}
+          >
+            {attachments.length} 📎
+          </button>
+
+          {expanded && (
+            <ul>
+              {attachments.map((attachment) => (
+                <li key={attachment.attachment_number}>
+                  <span style={{ overflowWrap: "anywhere" }}>
+                    {attachment.original_filename}
+                  </span>
+                  {" "}
+                  <button
+                    type="button"
+                    disabled={downloading !== null}
+                    onClick={() => downloadAttachment(attachment)}
+                  >
+                    {downloading === attachment.attachment_number
+                      ? "Downloading…"
+                      : "Download"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      ) : (
+        !error && <span>📎</span>
+      )}
+    </div>
+  );
+}
 }

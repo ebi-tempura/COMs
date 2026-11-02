@@ -309,7 +309,6 @@ function WorkOrdersPage({ user }) {
       <Card>
         <div className="panel-title">
           <div>
-            <h2>{t("workOrders.title")}</h2>
             <span>
               {filteredWorkOrders.length} {t("common.total")}
             </span>

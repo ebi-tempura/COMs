@@ -74,6 +74,16 @@
     width: 170px;
   }
 
+.data-table.po-table {
+  table-layout: auto;
+  min-width: 0;
+}
+
+.data-table.po-table td:nth-child(2) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .icon-actions {
     display: flex;
     gap: 8px;

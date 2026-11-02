@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.dialects.sqlite import insert as postgres_insert
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -118,7 +118,7 @@ def next_po_number(
  ) -> str:
     # Preserve atomic numbering within each account and year.
     statement = (
-        sqlite_insert(PurchaseOrderSequence)
+        postgres_insert(PurchaseOrderSequence)
         .values(
             account_id=account_id,
             created_year=year,
