@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useLanguage } from "../../i18n/LanguageContext";
 import { useAuth } from "../../auth/AuthContext";
 import { supabase } from "../../lib/supabaseClient";
@@ -107,8 +107,7 @@ function Login() {
               {t("login.rememberMe")}
             </label>
 
-            <a>{t("login.forgotPassword")}</a>
-          </div>
+            <Link to="/forgot-password">{t("login.forgotPassword")}</Link>          </div>
 
           <button
             className="button"

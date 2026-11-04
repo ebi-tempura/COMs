@@ -14,6 +14,8 @@ import Suppliers from "./pages/Suppliers/Suppliers";
 import Register from "./pages/Register/Register";
 import PurchaseOrders from "./pages/PurchaseOrders/PurchaseOrders";
 import Users from "./pages/Users/Users";
+import ResetPassword from "./pages/Login/ResetPassword";
+import ForgotPassword from "./pages/Login/ForgotPassword";
 import LanguageSwitcher from "./components/common/LanguageSwitcher";
 import { useLanguage } from "./i18n/LanguageContext";
 
@@ -34,6 +36,8 @@ function App() {
         <Route path="/register" element={<Register setUserEmail={setUserEmail} setName={setName} />} />
         
         <Route path="/login" element={<Login setUserEmail={setUserEmail} />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route element={<RequireAuth />}>              
           <Route element={<AppLayout />}>
             <Route path="/" element={<Navigate to="/work-orders" replace />} />
