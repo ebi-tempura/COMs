@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
         currentSession?.access_token === nextSession?.access_token;
 
       // Ignore repeated events for the exact same session.
-      if (sameUser && sameToken) {
+      if (currentSession !== undefined && sameUser && sameToken) {
         return currentSession;
       }
 
