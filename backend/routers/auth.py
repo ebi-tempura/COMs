@@ -24,6 +24,7 @@ from schemas.auth import (
     AuthMessageRead,
 )
 
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
 
 router = APIRouter(
     prefix="/api/auth",
@@ -126,7 +127,7 @@ def signup(payload: AuthSignupCreate):
             {
                 "email": email,
                 "password": payload.password,
-                "options": {"email_redirect_to": "http://localhost:5173/auth/confirm"}
+                "options": {"email_redirect_to": f"{frontend_url}/auth/confirm"}
             },
         )
 
