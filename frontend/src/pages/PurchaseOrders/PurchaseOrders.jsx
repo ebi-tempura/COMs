@@ -695,7 +695,7 @@ function PurchaseOrdersPage({ user }) {
           </div>
         </div>
 
-        <div className="table-wrapper">
+        <div className="table-wrapper"> 
           <table className="data-table">
             <thead>
               <tr>

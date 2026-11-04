@@ -270,6 +270,7 @@ const spanishMexico = {
     reports: "Reportes",
     documents: "Documentos",
     settings: "Configuración",
+    users: "Usuarios",
     logout: "Cerrar sesión",
   },
   login: {

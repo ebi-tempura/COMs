@@ -1,4 +1,3 @@
-import Users from "./pages/Users/Users";
 import AcceptInvitation from "./pages/Users/AcceptInvitation";
 import RequireAuth from "./auth/RequireAuth";
 
@@ -14,6 +13,7 @@ import WorkOrders from "./pages/WorkOrders/WorkOrders";
 import Suppliers from "./pages/Suppliers/Suppliers";
 import Register from "./pages/Register/Register";
 import PurchaseOrders from "./pages/PurchaseOrders/PurchaseOrders";
+import Users from "./pages/Users/Users";
 import LanguageSwitcher from "./components/common/LanguageSwitcher";
 import { useLanguage } from "./i18n/LanguageContext";
 
@@ -34,9 +34,7 @@ function App() {
         <Route path="/register" element={<Register setUserEmail={setUserEmail} setName={setName} />} />
         
         <Route path="/login" element={<Login setUserEmail={setUserEmail} />} />
-        <Route element={<RequireAuth />}>
-          <Route path="/users" element={<Users />} />
-              
+        <Route element={<RequireAuth />}>              
           <Route element={<AppLayout />}>
             <Route path="/" element={<Navigate to="/work-orders" replace />} />
             <Route
@@ -64,7 +62,7 @@ function App() {
               element={<PlaceholderPage translationKey="placeholders.documents" />}
             />
             <Route
-              path="/settings"
+              path="/users"
               element={<Users />}
             />
           </Route>
