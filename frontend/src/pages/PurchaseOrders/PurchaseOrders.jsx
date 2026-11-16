@@ -3,6 +3,12 @@ import Card from "../../components/common/Card";
 import { useAuth } from "../../auth/AuthContext";
 import { api, apiDownload } from "../../lib/api";
 
+const ELIGIBLE_WORK_ORDER_STATUSES = new Set([
+  "Authorized Work Order",
+  "Completed",
+  "Approved",
+]);
+
 function getStatusClass(status) {
   return status.toLowerCase().replaceAll(" ", "-");
 }
@@ -112,9 +118,8 @@ function PurchaseOrdersPage({ user }) {
       supplier.status === "Approved" && supplier.is_active !== false
   );
 
-  // Matches the current PO backend's exact eligibility check.
-  const approvedWorkOrders = workOrders.filter(
-    (workOrder) => workOrder.status === "Approved"
+  const eligibleWorkOrders = workOrders.filter((workOrder) =>
+    ELIGIBLE_WORK_ORDER_STATUSES.has(workOrder.status)
   );
 
   const supplierNames = new Map(
@@ -233,7 +238,7 @@ function PurchaseOrdersPage({ user }) {
 
     if (
       form.work_order_number &&
-      !approvedWorkOrders.some(
+      !eligibleWorkOrders.some(
         (order) => order.work_order_number === form.work_order_number
       )
     ) {
@@ -505,7 +510,7 @@ function PurchaseOrdersPage({ user }) {
                     onChange={changeForm}
                   >
                     <option value="">No work order</option>
-                    {approvedWorkOrders.map((order) => (
+                    {eligibleWorkOrders.map((order) => (
                       <option
                         key={order.database_id}
                         value={order.work_order_number}
@@ -514,7 +519,7 @@ function PurchaseOrdersPage({ user }) {
                       </option>
                     ))}
                   </select>
-                  <small>Only eligible approved work orders are listed.</small>
+                  <small>Authorized and completed work orders are listed.</small>
                 </div>
 
                 <div className="form-group">

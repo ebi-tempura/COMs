@@ -27,6 +27,7 @@ router = APIRouter(
  )
 
 BOARD_THRESHOLD = Decimal("10000.00")
+ELIGIBLE_WORK_ORDER_STATUSES = frozenset({"Authorized Work Order", "Completed", "Approved"})
 
 ### Response and Numbering Helpers ###
 @router.get("", response_model=list[PurchaseOrderRead])
@@ -220,10 +221,10 @@ def create_purchase_order(
                 detail="Work order not found",
             )
 
-        if work_order.status != "Approved":
+        if work_order.status not in ELIGIBLE_WORK_ORDER_STATUSES:
             raise HTTPException(
                 status_code=409,
-                detail="Work order must be approved",
+                detail="Work order must be authorized or completed before it can be linked",
             )
 
     supplier = database.scalar(
@@ -325,10 +326,10 @@ def submit_purchase_order(
 
     work_order, supplier = get_related_records(database, purchase_order)
 
-    if work_order is not None and work_order.status != "Approved":
+    if work_order is not None and work_order.status not in ELIGIBLE_WORK_ORDER_STATUSES:
         raise HTTPException(
             status_code=409,
-            detail="Work order is no longer approved",
+            detail="Linked work order is no longer eligible for this purchase order",
         )
 
     if supplier.status != "Approved":
