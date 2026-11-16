@@ -243,12 +243,20 @@ function handleEditSupplier() {
   showUnavailableAction();
 }
 
-function handleInactiveSupplier() {
-  showUnavailableAction();
+function handleInactiveSupplier(supplierId) {
+  if (!window.confirm(`Deactivate supplier ${supplierId}?`)) return;
+
+  return runSupplierAction(supplierId, "deactivate");
+}
+
+function handleReactivateSupplier(supplierId) {
+  if (!window.confirm(`Reactivate supplier ${supplierId}?`)) return;
+
+  return runSupplierAction(supplierId, "reactivate");
 }
 
 function handleRfcValidation() {
-  showUnavailableAction();
+  showUnavailableAction(); 
 }
 
 function handleResubmitSupplier() {
@@ -322,6 +330,7 @@ function handleResubmitSupplier() {
             onApproveSupplier={handleApproveSupplier}
             onRejectSupplier={handleRejectSupplier}
             onResubmitSupplier={handleResubmitSupplier}
+            onReactivateSupplier={handleReactivateSupplier}
             />
           </fieldset>
         </Card>

@@ -33,7 +33,10 @@ export default function WorkOrderForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const lock = useRef(false);
-
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [attachmentError, setAttachmentError] = useState("");
+  const attachmentInputRef = useRef(null);
+  
   function handleChange(event) {
     const { name, value } = event.target;
     setFormData((current) => ({ ...current, [name]: value }));
@@ -44,7 +47,7 @@ export default function WorkOrderForm({
     if (lock.current || disabled) return;
 
     setError("");
-
+    
     const payload = {
       ...formData,
       title: formData.title.trim(),
@@ -52,6 +55,14 @@ export default function WorkOrderForm({
       description: formData.description.trim(),
     };
 
+    const saved = await onCreateWorkOrder(payload, selectedFiles);
+    
+    if (saved) {
+      setFormData({ ...initialForm });
+      setSelectedFiles([]);
+      setAttachmentError("");
+    }
+    
     if (!payload.title || !payload.location || !payload.description) {
       setError("Enter a title, location, and description.");
       return;
@@ -63,14 +74,26 @@ export default function WorkOrderForm({
     ) {
       setError("The amount must be greater than zero.");
       return;
+    } 
+
+    const megabyte = 1024 * 1024;
+    const totalSize = files.reduce((total, file) => total + file.size, 0);
+
+    if (
+      files.length > 5 ||
+      files.some((file) => file.size > 10 * megabyte) ||
+      totalSize > 25 * megabyte
+    ) {
+      setError("Select up to 5 files, 10 MB each and 25 MB total.");
+      return;
     }
 
     lock.current = true;
     setSaving(true);
 
     try {
-      const saved = await onCreateWorkOrder(payload);
-      if (saved) setFormData({ ...initialForm });
+      const saved = await onCreateWorkOrder(payload, files);
+      if (saved) setFormData({ ...initialForm }); setFiles([]);
     } catch (err) {
       setError(err.message || "Unable to save work order.");
     } finally {
@@ -78,6 +101,31 @@ export default function WorkOrderForm({
       setSaving(false);
     }
   }
+
+    function handleFileSelection(event) {
+    const input = event.currentTarget;
+    const pickedFiles = Array.from(input.files);
+    input.value = "";
+
+    if (pickedFiles.length === 0) return;
+
+    const nextFiles = [...selectedFiles, ...pickedFiles];
+    const mib = 1024 * 1024;
+    const totalBytes = nextFiles.reduce((total, file) => total + file.size, 0);
+
+    if (
+      nextFiles.length > 5 ||
+      nextFiles.some((file) => file.size > 10 * mib) ||
+      totalBytes > 25 * mib
+    ) {
+      setAttachmentError("Select up to 5 files, 10 MiB each and 25 MiB combined.");
+      return;
+    }
+
+    setSelectedFiles(nextFiles);
+    setAttachmentError("");
+  }
+
 
   return (
     <form onSubmit={handleSubmit}>
@@ -243,12 +291,62 @@ export default function WorkOrderForm({
             />
           </div>
           
-          <div className="attachment-box form-wide"> 
-            <strong>{t("supplierForm.attachments")}</strong>
-            <p>{t("supplierForm.dropFiles")}</p>
-            <button type="button">{t("supplierForm.browseFiles")}</button>
-            <small>{t("supplierForm.fileHelp")}</small>
-          </div>
+          <div className="attachment-box form-wide">
+                    <strong>Attachments</strong>
+                    <p>Select an invoice or supporting documents.</p>
+
+                    <input
+                      ref={attachmentInputRef}
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      multiple
+                      hidden
+                      onChange={handleFileSelection}
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => attachmentInputRef.current?.click()}
+                    >
+                      Browse files
+                    </button>
+
+                    <p>
+                      <small>
+                        Maximum 5 files, 10 MiB per file and 25 MiB combined.
+                        Browsing again to add more files.
+                      </small>
+                    </p>
+
+                    {attachmentError && (
+                      <p role="alert" style={{ color: "#b91c1c" }}>
+                        {attachmentError}
+                      </p>
+                    )}
+
+                    {selectedFiles.length > 0 && (
+                      <ul>
+                        {selectedFiles.map((file, index) => (
+                          <li key={`${file.name}-${index}`}>
+                            <span style ={{ fontSize: "13px" }}>
+                              {file.name} — {(file.size / 1024).toFixed(1)} KiB
+                            </span>
+                            {" "}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedFiles((current) =>
+                                  current.filter((_, position) => position !== index)
+                                )
+                              }
+                            >
+                              X
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
 
           <div className="form-actions form-wide">
             <button

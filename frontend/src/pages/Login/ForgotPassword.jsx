@@ -72,12 +72,12 @@ export default function ForgotPassword() {
             <button className="button" type="submit" disabled={busy}>
               {busy ? "Sending…" : "Send reset link"}
             </button>
+            <p>
+              <Link to="/login">Back to login</Link>
+            </p>
           </form>
         )}
 
-        <p>
-          <Link to="/login">Back to login</Link>
-        </p>
       </section>
     </main>
   );

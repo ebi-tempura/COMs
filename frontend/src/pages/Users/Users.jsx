@@ -86,7 +86,7 @@ export default function Users() {
         }}
       >
       <Card>
-        <div className="form-group">
+        <div className="login-form">
           <label>
             Email
             <input
@@ -99,20 +99,22 @@ export default function Users() {
               />
           </label>
 
-        <label>
-          Role
-          <select
-            value={role}
-            disabled={busy}
-            onChange={(event) => setRole(event.target.value)}
+          <label className="role-field" htmlFor="user-role">
+            <span>Role</span>
+
+            <select
+              id="user-role"
+              value={role}
+              disabled={busy}
+              onChange={(event) => setRole(event.target.value)}
             >
-            {roles.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </label>
+              {roles.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+</label>
 
         <button type="submit" disabled={busy}>
           {busy ? "Please wait…" : "Create invitation"}
@@ -161,18 +163,31 @@ export default function Users() {
               <th>Action</th>
             </tr>
           </thead>
+
+
           <tbody>{users.map(u => <tr key={u.database_id}>
             <td>{u.first_name} {u.last_name}</td>
             <td>{u.email}</td>
             <td>{admin ? <select aria-label={`Role for ${u.email}`} value={u.user_role} disabled={busy}
               onChange={e => perform(() => api(`/api/users/${u.database_id}/role`, { method: 'PATCH', body: JSON.stringify({ user_role: e.target.value }) }))}>
               {roles.map(r => <option key={r}>{r}</option>)}
-            </select> : u.user_role}</td><td>{u.status}</td>
+            </select> : u.user_role}</td>
+            <td>
+              <span
+                className="status-badge-users"
+                data-status={String(u.status ?? "").trim().toLowerCase()}
+              >
+                {u.status}
+              </span>
+            </td>
+
             <td>{admin && <button disabled={busy} onClick={() => {
               if (u.status === 'Active' && !window.confirm(`Deactivate ${u.email}? Their COMs access will be blocked.`)) return;
               perform(() => api(`/api/users/${u.database_id}/status`, { method: 'PATCH', body: JSON.stringify({ status: u.status === 'Active' ? 'Inactive' : 'Active' }) }));
             }}>{u.status === 'Active' ? 'Deactivate' : 'Reactivate'}</button>}</td>
-          </tr>)}</tbody>
+          </tr>)}
+          
+          </tbody>
           </table>
       </div>
     </Card>
@@ -215,7 +230,14 @@ export default function Users() {
                     <tr key={i.database_id}>
                       <td>{i.email}</td>
                       <td>{i.user_role}</td>
-                      <td>{status}</td>
+                     <td>
+                        <span
+                          className="status-badge-users"
+                          data-status={String(status ?? "").trim().toLowerCase()}
+                        >
+                          {status}
+                        </span>
+                      </td>
                       <td>
                         {!i.accepted_at && !i.revoked_at && (
                           <button

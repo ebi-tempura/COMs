@@ -4,6 +4,8 @@ import {
 } from "../../security/constants";
 import { useLanguage } from "../../i18n/LanguageContext";
 import WorkOrderProgress from "./WorkOrderProgress";
+import { useEffect, useRef, useState } from "react";
+import { api, apiDownload } from "../../lib/api";
 
 const APPROVER_BY_STATUS = {
   [WORK_ORDER_STATUS.PENDING_PRESIDENT_APPROVAL]: ROLES.PRESIDENT,
@@ -11,10 +13,170 @@ const APPROVER_BY_STATUS = {
   [WORK_ORDER_STATUS.PENDING_BOARD_MEMBER_APPROVAL]: ROLES.BOARD_MEMBER,
 };
 
+function WOAttachmentsCell({ workOrderNumber, userRole, refreshKey }) {
+  const [attachments, setAttachments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+  const [error, setError] = useState("");
+  const [downloading, setDownloading] = useState(null);
+  const [retry, setRetry] = useState(0);
+  const downloadLock = useRef(false);
+
+  const canRead = [
+    "Admin",
+    "Manager",
+    "Staff",
+    "President",
+    "Treasurer",
+    "Board Member",
+    "Resident",
+  ].includes(userRole);
+
+  const attachmentsUrl =
+    `/api/attachments/api/work-orders/${encodeURIComponent(workOrderNumber)}/attachments`;
+
+  useEffect(() => {
+    if (!canRead) {
+      setAttachments([]);
+      setLoading(false);
+      return;
+    }
+
+    let active = true;
+    const controller = new AbortController();
+
+    setLoading(true);
+    setError("");
+
+    api(attachmentsUrl, { signal: controller.signal })
+      .then((result) => {
+        if (!Array.isArray(result)) {
+          throw new Error("Invalid attachment list.");
+        }
+
+        if (active) setAttachments(result);
+      })
+      .catch((err) => {
+        if (active) {
+          setAttachments([]);
+          setError(err.message || "Unable to load attachments.");
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+      controller.abort(); 
+    };
+  }, [attachmentsUrl, canRead, refreshKey, retry]);
+
+  async function downloadAttachment(attachment) {
+    if (!canRead || downloadLock.current) return;
+
+    downloadLock.current = true;
+    setDownloading(attachment.attachment_number);
+    setError("");
+
+    try {
+      await apiDownload(
+        `${attachmentsUrl}/${encodeURIComponent(
+          attachment.attachment_number
+        )}/download`,
+        attachment.original_filename
+      );
+    } catch (err) {
+      setError(err.message || "Unable to download attachment.");
+    } finally {
+      downloadLock.current = false;
+      setDownloading(null);
+    }
+  }
+  async function handleDeleteDraft(id) {
+    if (lock.current) return;
+
+    lock.current = true;
+    setBusy(true);
+    setError("");
+
+    try {
+      await api(`${WORK_ORDERS_URL}/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      setWorkOrders((current) => current.filter((item) => item.id !== id));
+    } catch (error) {
+      setError(error.message || "Unable to delete work order.");
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
+
+  if (!canRead) return <span>Not permitted</span>;
+  if (loading) return <span>Loading…</span>;
+
+  return (
+    <div>
+      {error && (
+        <div>
+          <p role="alert" style={{ color: "#b91c1c" }}>
+            {error}
+          </p>
+          <button
+            type="button"
+            onClick={() => setRetry((value) => value + 1)}
+          >
+            Refresh attachments
+          </button>
+        </div>
+      )}
+
+      {attachments.length > 0 ? (
+        <>
+          <button
+            type="button"
+            className="table-action-button"
+            aria-expanded={expanded}
+            onClick={() => setExpanded((current) => !current)}
+          >
+            {attachments.length} 📎
+          </button>
+
+          {expanded && (
+            <ul>
+              {attachments.map((attachment) => (
+                <li key={attachment.attachment_number}>
+                  <span style={{ overflowWrap: "anywhere" }}>
+                    {attachment.original_filename}
+                  </span>
+                  {" "}
+                  <button
+                    type="button"
+                    disabled={downloading !== null}
+                    onClick={() => downloadAttachment(attachment)}
+                  >
+                    {downloading === attachment.attachment_number
+                      ? "Downloading…"
+                      : "Download"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      ) : (
+        !error && <span>📎</span>
+      )}
+    </div>
+  );
+  }
+
 export default function WorkOrderTable({
   workOrders,
   currentUser,
   disabled = false,
+  refereshKey,
   onViewWorkOrder,
   onSubmitWorkOrder,
   onApproveWorkOrder,
@@ -45,7 +207,7 @@ export default function WorkOrderTable({
             <th>{t("workOrderTable.id")}</th>
             <th>{t("workOrderTable.title")}</th>
             <th>{t("workOrderTable.category")}</th>
-            <th>{t("workOrderTable.amount")}</th>
+            <th>{t("Attachments")}</th>
             <th>{t("workOrderTable.status")}</th>
             <th>Progress</th>
             <th>{t("workOrderTable.priority")}</th>
@@ -73,8 +235,10 @@ export default function WorkOrderTable({
                 <td>{workOrder.id}</td>
                 <td>{workOrder.title}</td>
                 <td>{valueLabel("category", workOrder.category)}</td>
-                <td>{formatCurrency(workOrder.amount)}</td>
-
+                <td> <WOAttachmentsCell
+                      workOrderNumber={workOrder.id}
+                      userRole={currentUser?.role}
+                /></td>                
                 <td>
                   <span
                     className={`status-badge status-${workOrder.status
@@ -105,6 +269,22 @@ export default function WorkOrderTable({
                     >
                       {t("workOrderTable.view")}
                     </button>
+
+                    {workOrder.status === "Draft" &&
+                      ["Manager", "Staff"].includes(currentUser?.role) && (
+                      <button
+                        type="button"
+                        className="table-action-button"
+                        disabled={disabled}
+                        onClick={() => {
+                          if (window.confirm("Delete this draft work order?")) {
+                            onDeleteDraft(workOrder.id);
+                          }
+                        }}
+                      >
+                        Delete draft
+                      </button>
+                      )}
 
                     {workOrder.type === "Emergency" && (
                     

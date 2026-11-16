@@ -7,61 +7,6 @@ function getStatusClass(status) {
   return status.toLowerCase().replaceAll(" ", "-");
 }
 
-const PO_URL = "/api/purchase-orders";
-const SUPPLIERS_URL = "/api/suppliers/api/suppliers";
-const WORK_ORDERS_URL = "/api/work_orders/api/work-orders";
-
-const CREATE_ROLES = ["Admin", "Manager", "Staff"];
-const VIEW_ROLES = [
-  ...CREATE_ROLES,
-  "President",
-  "Treasurer",
-  "Board Member",
-];
-
-const APPROVAL_STEPS = {
-  "Pending President Approval": {
-    role: "President",
-    action: "approve-president",
-  },
-  "Pending Treasurer Approval": {
-    role: "Treasurer",
-    action: "approve-treasurer",
-  },
-  "Pending Board Member Approval": {
-    role: "Board Member",
-    action: "approve-board-member",
-  },
-};
-
-const EMPTY_FORM = {
-  title: "",
-  supplier_id: "",
-  work_order_number: "",
-  amount: "",
-  priority: "Medium",
-  description: "",
-};
-
-const money = new Intl.NumberFormat("es-MX", {
-  style: "currency",
-  currency: "MXN",
-});
-
-export default function PurchaseOrders() {
-  const { user } = useAuth();
-
-  // Reset page state when the account or signed-in identity changes.
-  if (!user) return null;
-
-  return (
-    <PurchaseOrdersPage
-      key={`${user.account_id}:${user.id}:${user.role}`}
-      user={user}
-    />
-  );
-}
-
 function PurchaseOrdersPage({ user }) {
   const [orders, setOrders] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -447,6 +392,21 @@ function PurchaseOrdersPage({ user }) {
       lock.current = false;
       setBusy(false);
     }
+
+    if (action === "delete") {
+      const orderNumber = order.purchase_order_number;
+
+      await api(`${PO_URL}/${encodeURIComponent(orderNumber)}`, {
+        method: "DELETE",
+      });
+
+      setOrders((current) =>
+        current.filter((item) => item.purchase_order_number !== orderNumber)
+      );
+
+      setMessage(`${orderNumber}: draft deleted.`);
+      return;
+    }
   }
 
   if (!canView) {
@@ -587,7 +547,7 @@ function PurchaseOrdersPage({ user }) {
                     ))}
                   </select>
                 </div>
-
+                
                 <div className="form-group form-wide">
                   <label htmlFor="po-description">Description</label>
                   <textarea
@@ -637,7 +597,9 @@ function PurchaseOrdersPage({ user }) {
                     <ul>
                       {selectedFiles.map((file, index) => (
                         <li key={`${file.name}-${index}`}>
-                          {file.name} — {(file.size / 1024).toFixed(1)} KiB
+                          <span style ={{ fontSize: "13px" }}>
+                            {file.name} — {(file.size / 1024).toFixed(1)} KiB
+                            </span>
                           {" "}
                           <button
                             type="button"
@@ -699,7 +661,7 @@ function PurchaseOrdersPage({ user }) {
           <table className="data-table">
             <thead>
               <tr>
-                <th>PO number</th>
+                <th>PO number</th> 
                 <th>Title / description</th>
                 <th>Supplier</th>
                 <th>Work order</th>
@@ -761,7 +723,23 @@ function PurchaseOrdersPage({ user }) {
                             Submit
                           </button>
                         )}
-
+                          
+                        {order.status === "Draft" &&
+                          ["Manager", "Staff"].includes(user.role) && (
+                            <button
+                              type="button"
+                              className="table-action-button"
+                              disabled={busy || loading}
+                              onClick={() => {
+                                if (window.confirm("Delete this draft purchase order?")) {
+                                  performAction(order, "delete");
+                                }
+                              }}
+                            >
+                              Delete draft
+                            </button>
+                          )}
+                          
                         {canReview && (
                           <>
                             <button
@@ -774,6 +752,8 @@ function PurchaseOrdersPage({ user }) {
                             >
                               Approve
                             </button>
+                            
+                        
 
                             <button
                               type="button"
@@ -802,6 +782,7 @@ function PurchaseOrdersPage({ user }) {
       </Card>
     </div>
   );
+  
   function POAttachmentsCell({ purchaseOrderNumber, userRole, refreshKey }) {
   const [attachments, setAttachments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -856,7 +837,7 @@ function PurchaseOrdersPage({ user }) {
 
     return () => {
       active = false;
-      controller.abort();
+      controller.abort(); 
     };
   }, [attachmentsUrl, canRead, refreshKey, retry]);
 
@@ -940,4 +921,49 @@ function PurchaseOrdersPage({ user }) {
     </div>
   );
 }
+}
+
+const PO_URL = "/api/purchase-orders";
+const SUPPLIERS_URL = "/api/suppliers/api/suppliers";
+const WORK_ORDERS_URL = "/api/work_orders/api/work-orders";
+
+const CREATE_ROLES = ["Admin", "Manager", "Staff"];
+const VIEW_ROLES = [...CREATE_ROLES, "President", "Treasurer", "Board Member"];
+const money = new Intl.NumberFormat("es-MX", {style: "currency", currency: "MXN",});
+
+const APPROVAL_STEPS = {
+  "Pending President Approval": {
+    role: "President",
+    action: "approve-president",
+  },
+  "Pending Treasurer Approval": {
+    role: "Treasurer",
+    action: "approve-treasurer",
+  },
+  "Pending Board Member Approval": {
+    role: "Board Member",
+    action: "approve-board-member",
+  },
+};
+const EMPTY_FORM = {
+  title: "",
+  supplier_id: "",
+  work_order_number: "",
+  amount: "",
+  priority: "Medium",
+  description: "",
+};
+
+export default function PurchaseOrders() {
+  const { user } = useAuth();
+
+  // Reset page state when the account or signed-in identity changes.
+  if (!user) return null;
+
+  return (
+    <PurchaseOrdersPage
+      key={`${user.account_id}:${user.id}:${user.role}`}
+      user={user}
+    />
+  );
 }

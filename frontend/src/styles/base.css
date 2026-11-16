@@ -22,7 +22,15 @@ textarea {
     place-items: center;
     background: linear-gradient(135deg, #0f172a, #1d4ed8);
     padding: 24px;
+    min-height: 100vh;
+    /*background-image:
+      linear-gradient(rgba(7, 21, 41, 0.35), rgba(7, 21, 41, 0.35)),
+      url("/blue-building.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;*/
   }
+  
   
 .login-card {
     width: 100%;
@@ -127,5 +135,33 @@ register-step input {
   to {
     opacity: 1;
     transform: translateX(0);
+  }
+}
+.login-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 440px) minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.login-layout > .login-page {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#root:has(> .login-layout) {
+  width: 100%;
+}
+
+.login-image-panel {
+  background: url("/blue-building.png") center / cover no-repeat;
+}
+
+@media (max-width: 700px) {
+  .login-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .login-image-panel {
+    display: none;
   }
 }

@@ -214,6 +214,7 @@ const english = {
     reject: "Reject",
     edit: "Edit",
     inactive: "Inactive",
+    reactivate: "Reactivate",
   },
   completionHistory: {
     title: "Completion Report History",
@@ -368,7 +369,6 @@ const spanishMexico = {
     user: "Usuario",
     role: "Rol",
     process: "Proceso",
-  
     actionCreate: "Orden de trabajo creada",
     actionEdit: "Orden de trabajo editada",
     actionSubmit: "Orden de trabajo enviada",
@@ -438,6 +438,7 @@ const spanishMexico = {
     reject: "Rechazar",
     edit: "Editar",
     inactive: "Inactivar",
+    reactivate: "Reactivar",
   },
   statusLabels: {
     Draft: "Borrador",

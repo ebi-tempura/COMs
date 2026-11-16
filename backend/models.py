@@ -97,6 +97,7 @@ class WorkOrder(Base):
     location: Mapped[str] = mapped_column(String(200), nullable=False)
     target_date: Mapped[date] = mapped_column(Date, nullable=False)
     last_attachment_sequence: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Reverse relationships
     building_account: Mapped["BuildingAccount"] = relationship(back_populates="work_orders")
@@ -293,7 +294,7 @@ class PurchaseOrder(Base):
     created_by_user_id: Mapped[int] = mapped_column(ForeignKey("User_table.database_id"), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     last_attachment_sequence: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
-
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
 
 class PurchaseOrderAttachment(Base):
     __tablename__ = "purchase_order_attachments"
@@ -316,6 +317,7 @@ class PurchaseOrderAttachment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     deleted_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("User_table.database_id"), nullable=True, index=True)
+
 class AuditLog(Base): 
 
     __tablename__ = "audit_trail"

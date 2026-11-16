@@ -4,7 +4,8 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
-from sqlalchemy.dialects.sqlite import insert as postgres_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.dialects.postgresql import insert as postgres_insert
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -40,7 +41,7 @@ def list_purchase_orders(
 ):
     records = database.scalars(
         select(PurchaseOrder)
-        .where(PurchaseOrder.account_id == current_user.account_id)
+        .where(PurchaseOrder.account_id == current_user.account_id,PurchaseOrder.deleted_at.is_(None))
         .order_by(PurchaseOrder.database_id.desc())
     ).all()
 
@@ -116,9 +117,19 @@ def next_po_number(
     account_id: str,
     year: int,
  ) -> str:
+    
+    dialect = database.get_bind().dialect.name
+
+    if dialect == "postgresql":
+        insert = postgres_insert
+    elif dialect == "sqlite":
+        insert = sqlite_insert
+    else:
+        raise RuntimeError(f"Unsupported database dialect: {dialect}")
+    
     # Preserve atomic numbering within each account and year.
     statement = (
-        postgres_insert(PurchaseOrderSequence)
+        insert(PurchaseOrderSequence)
         .values(
             account_id=account_id,
             created_year=year,
@@ -746,6 +757,50 @@ def reject_purchase_order(
 
     database.commit()
     database.refresh(purchase_order)
-
+    
     return to_purchase_order_read(purchase_order, work_order, supplier)
+
+## Delete Purchase Order ###
+
+@router.delete("/{purchase_order_number}", status_code=204)
+def delete_purchase_order(
+    purchase_order_number: str,
+    current_user: User = Depends(require_roles("Manager", "Staff")),
+    database: Session = Depends(get_db),
+):
+    purchase_order = database.scalar(
+        select(PurchaseOrder).where(
+            PurchaseOrder.purchase_order_number == purchase_order_number,
+            PurchaseOrder.account_id == current_user.account_id,
+        )
+        .where(
+            PurchaseOrder.account_id == current_user.account_id,
+            PurchaseOrder.deleted_at.is_(None), 
+        )
+        .with_for_update()
+    )
+
+    if purchase_order is None:
+        raise HTTPException(status_code=404, detail="Purchase order not found")
+
+    if purchase_order.status != "Draft":
+        raise HTTPException(status_code=409, detail="Only drafts can be deleted")
+
+    purchase_order.deleted_at = datetime.now(timezone.utc)
+
+    database.add(
+        AuditLog(
+            account_id=current_user.account_id,
+            user_id=current_user.auth_user_id,
+            user_name=f"{current_user.first_name} {current_user.last_name}",
+            user_role=current_user.user_role,
+            action="Deleted purchase order draft",
+            table_name="purchase_orders",
+            record_id=purchase_order_number,
+            details="Draft soft-deleted",
+        )
+    )
+    database.commit()
+    
+
 

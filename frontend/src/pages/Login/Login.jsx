@@ -46,86 +46,86 @@ function Login() {
   }
 
   return (
+    <div className="login-layout">
+      <main className="login-page">
 
-   <main className="login-page">
+          <section className="login-card">
+            <div className="login-logo">
+              <img src="/Logo-blue.png" alt="PAX Aurora" />
+            </div>
 
-      <section className="login-card">
-        <div className="login-logo">
-          <img src="/Logo-blue.png" alt="PAX Aurora" />
-        </div>
+            <h1>{t("login.welcome")}</h1>
+            <p>{t("login.subtitle")}</p>
 
-        <h1>{t("login.welcome")}</h1>
-        <p>{t("login.subtitle")}</p>
+            <form className="login-form" onSubmit={handleSubmit}>
+                        {(loginError || accountError) && (
+                <p className="form-error" role="alert">
+                  {loginError || accountError}
+                </p>
+              )}
 
-        <form className="login-form" onSubmit={handleSubmit}>
-                    {(loginError || accountError) && (
-            <p className="form-error" role="alert">
-              {loginError || accountError}
-            </p>
-          )}
+              {accountError && (
+                <button
+                  type="button"
+                  disabled={busy || loading}
+                  onClick={refreshUser}
+                >
+                  Retry account connection
+                </button>
+              )}
 
-          {accountError && (
-            <button
-              type="button"
-              disabled={busy || loading}
-              onClick={refreshUser}
-            >
-              Retry account connection
-            </button>
-          )}
+              {loading && (
+                <p role="status">Loading your COMs account…</p>
+              )}
+              
+              
+              <label>
+                {t("login.email")}
+                <input
+                  type="email"
+                  placeholder="admin@condominio.com"
+                  required
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                />
+              </label>
 
-          {loading && (
-            <p role="status">Loading your COMs account…</p>
-          )}
-          
-          
-          <label>
-            {t("login.email")}
-            <input
-              type="email"
-              placeholder="admin@condominio.com"
-              required
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </label>
+              <label>
+                {t("login.password")}
+                <input
+                  type="password"
+                  placeholder={t("login.passwordPlaceholder")}
+                  required
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
+              </label>
 
-          <label>
-            {t("login.password")}
-            <input
-              type="password"
-              placeholder={t("login.passwordPlaceholder")}
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </label>
+              <div className="login-options">
+                <label className="checkbox-row">
+                  <input type="checkbox" />
+                  {t("login.rememberMe")}
+                </label>
 
-          <div className="login-options">
-            <label className="checkbox-row">
-              <input type="checkbox" />
-              {t("login.rememberMe")}
-            </label>
+                <Link to="/forgot-password">{t("login.forgotPassword")}</Link>          </div>
 
-            <Link to="/forgot-password">{t("login.forgotPassword")}</Link>          </div>
+              <button
+                className="button"
+                type="submit"
+                disabled={busy || loading}
+              >
+                {busy || loading ? "Signing in…" : t("login.signIn")}
+              </button> 
 
-          <button
-            className="button"
-            type="submit"
-            disabled={busy || loading}
-          >
-            {busy || loading ? "Signing in…" : t("login.signIn")}
-          </button> 
+              <button type="button" className="button.secondarybutton" onClick={() => navigate("/register")}>
+                {t("login.signUp")}
+              </button>
 
-          <button type="button" className="button.secondarybutton" onClick={() => navigate("/register")}>
-            {t("login.signUp")}
-          </button>
-
-
-
-        </form>
-      </section>
-    </main>
+            </form>
+          </section>
+        </main>
+        <div className="login-image-panel" aria-hidden="true"/>
+      </div>
   );
 }
 

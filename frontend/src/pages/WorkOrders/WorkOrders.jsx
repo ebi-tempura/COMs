@@ -117,9 +117,11 @@ function WorkOrdersPage({ user }) {
       if (
         suppliersResult.status === "fulfilled" &&
         Array.isArray(suppliersResult.value)
-      ) {
-        setSuppliers(suppliersResult.value);
-      } else {
+        ) {
+        setSuppliers(
+          suppliersResult.value.filter((supplier) => supplier.status !== "Inactive")
+        );      
+        } else {
         setSuppliers([]);
         setSupplierError(
           suppliersResult.status === "rejected"
@@ -139,7 +141,7 @@ function WorkOrdersPage({ user }) {
     };
   }, [reload, canCreate, user.id, user.account_id, user.name]);
 
-  async function handleCreateWorkOrder(payload) {
+  async function handleCreateWorkOrder(payload,files = []) {
     if (lock.current) return false;
 
     if (!suppliers.some((item) => item.supplier_id === payload.supplier_id)) {
@@ -162,7 +164,36 @@ function WorkOrdersPage({ user }) {
       setWorkOrders((current) => [saved, ...current]);
       setSearch("");
       setStatusFilter("All");
-      setMessage(`${saved.id} saved as ${saved.status}.`);
+      setMessage(`${saved.id} saved as ${saved.status}.`);if (files.length > 0) {
+        const body = new FormData();
+
+        for (const file of files) {
+          body.append("files", file);
+        }
+
+        try {
+          const url =
+            `/api/attachments/api/work-orders/${encodeURIComponent(saved.id)}/attachments`;
+
+          const batch = await api(url, { method: "POST", body });
+
+          if (batch.failed_count > 0) {
+            const failures = batch.results
+              .filter((result) => result.status_code !== 201)
+              .map((result) => `${result.original_filename}: ${result.error}`);
+
+            setError(
+              `${saved.id} was saved. ${batch.uploaded_count} file(s) uploaded. ` +
+              `${failures.join(" · ")}. Retry failed files from Details.`
+            );
+          }
+        } catch (err) {
+          setError(
+            `${saved.id} was saved, but the upload could not be confirmed. ` +
+            `Check Attachments in Details before retrying. ${err.message}`
+          );
+        }
+      }
       return true;
     } catch (err) {
       setError(err.message || "Unable to create work order.");
@@ -336,9 +367,10 @@ function WorkOrdersPage({ user }) {
         </div>
 
         <WorkOrderTable
-          workOrders={filteredWorkOrders}
+          workOrders={filteredWorkOrders} 
           currentUser={user}
           disabled={busy || loading}
+          refreshKey={reload}
           onViewWorkOrder={(id) => setReportModal({id, mode: "details"})}
           onSubmitWorkOrder={handleSubmitWorkOrder}
           onApproveWorkOrder={(id) => handleReview(id, "approve")}

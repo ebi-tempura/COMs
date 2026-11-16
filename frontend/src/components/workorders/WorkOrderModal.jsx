@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { api } from "../../lib/api";
+import { api, apiDownload } from "../../lib/api";
 import { ROLES } from "../../security/constants";
 import "../../styles/WorkOrderModal.css"
 
@@ -323,6 +323,11 @@ export default function WorkOrderModal({
               <dt>Created on</dt>
               <dd>{displayDate(workOrder.createdAt)}</dd>
             </dl>
+
+             <WorkOrderAttachments
+              workOrderNumber={workOrder.id}
+              canOperate={canOperate}
+              />
           </div>
         )}
 
@@ -467,5 +472,138 @@ export default function WorkOrderModal({
       </div>
     </dialog>,
     document.body
+  );
+}
+
+function WorkOrderAttachments({ workOrderNumber, canOperate }) {
+  const url =
+    `/api/attachments/api/work-orders/${encodeURIComponent(workOrderNumber)}/attachments`;
+
+  const [attachments, setAttachments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    api(url, { signal: controller.signal })
+      .then((records) => {
+        if (!controller.signal.aborted) setAttachments(records);
+      })
+      .catch((err) => {
+        if (!controller.signal.aborted) setError(err.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [url]);
+
+  async function perform(action) {
+    setBusy(true);
+    setError("");
+
+    try {
+      await action();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function uploadFiles(event) {
+    const input = event.currentTarget;
+    const files = Array.from(input.files);
+    input.value = "";
+
+    if (!files.length) return;
+
+    const body = new FormData();
+    for (const file of files) {
+      body.append("files", file);
+    }
+
+    perform(async () => {
+      const batch = await api(url, { method: "POST", body });
+      const failures = batch.results
+        .filter((result) => result.status_code !== 201)
+        .map((result) => `${result.original_filename}: ${result.error}`);
+
+      if (failures.length) {
+        setError(`${batch.uploaded_count} uploaded. ${failures.join(" · ")}`);
+      }
+
+      setAttachments(await api(url));
+    });
+  }
+
+  return (
+    <section>
+      <h3>Attachments</h3>
+
+      {canOperate && (
+        <label>
+          Add files
+          <input
+            type="file"
+            multiple
+            accept=".pdf,.jpg,.jpeg,.png"
+            disabled={busy || loading}
+            onChange={uploadFiles}
+          />
+        </label>
+      )}
+
+      {error && <p role="alert">{error}</p>}
+      {loading && <p role="status">Loading attachments…</p>}
+      {!loading && !error && attachments.length === 0 && (
+        <p>No attachments yet.</p>
+      )}
+
+      <ul>
+        {attachments.map((attachment) => {
+          const fileUrl =
+            `${url}/${encodeURIComponent(attachment.attachment_number)}`;
+
+          return (
+            <li key={attachment.attachment_number}>
+              {attachment.original_filename}{" "}
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() =>
+                  perform(() =>
+                    apiDownload(`${fileUrl}/download`, attachment.original_filename)
+                  )
+                }
+              >
+                Download
+              </button>{" "}
+              {canOperate && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    if (!window.confirm(`Delete ${attachment.original_filename}?`)) {
+                      return;
+                    }
+
+                    perform(async () => {
+                      await api(fileUrl, { method: "DELETE" });
+                      setAttachments(await api(url));
+                    });
+                  }}
+                >
+                  Delete
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }

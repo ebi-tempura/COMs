@@ -1,6 +1,6 @@
 import logging
 
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from fastapi import Depends, HTTPException, APIRouter
 
@@ -67,11 +67,8 @@ def create_work_order(
     )
 )
 
-    if supplier is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Supplier not found",
-        )
+    if supplier.status == "Inactive":
+        raise HTTPException(status_code=409, detail="Supplier is inactive")
     
     record = WorkOrder(
         account_id=current_user.account_id,
@@ -734,3 +731,43 @@ def read_work_orders(
     records = database.scalars(statement).all()
 
     return [to_work_order_read(record) for record in records]
+
+#### Delete Work Order ###
+@router.delete("/api/work-orders/{work_order_number}", status_code=204)
+def delete_work_order_draft(
+    work_order_number: str,
+    current_user: User = Depends(require_roles("Manager", "Staff")),
+    database: Session = Depends(get_db),
+):
+    work_order = database.scalar(
+        select(WorkOrder)
+        .where(
+            WorkOrder.work_order_number == work_order_number,
+            WorkOrder.account_id == current_user.account_id,
+            WorkOrder.deleted_at.is_(None),
+        )
+        .with_for_update()
+    )
+
+    if work_order is None:
+        raise HTTPException(status_code=404, detail="Work order not found")
+
+    if work_order.status != "Draft":
+        raise HTTPException(status_code=409, detail="Only drafts can be deleted")
+
+    work_order.deleted_at = datetime.now(timezone.utc)
+
+    database.add(
+        AuditLog(
+            account_id=current_user.account_id,
+            user_id=current_user.auth_user_id,
+            user_name=f"{current_user.first_name} {current_user.last_name}",
+            user_role=current_user.user_role,
+            action="Deleted work order draft",
+            table_name="work_orders",
+            record_id=work_order_number,
+            details="Draft soft-deleted",
+        )
+    )
+
+    database.commit()

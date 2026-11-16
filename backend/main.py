@@ -18,8 +18,6 @@ from routers.notifications import router as notifications_router
 
 app = FastAPI(title="COMS API")
 
-app = FastAPI(title="COMS API")
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[

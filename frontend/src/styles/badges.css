@@ -27,7 +27,12 @@
 .status-Pending-RFC-Validation	 {
     background: #ffedd5;
     color: #c2410c;
-  }  
+  }
+
+.status-inactive {
+       background: #fee2e2;
+    color: #dc2626;
+  }
 
 .status-rejected, 
 .status-rejected-by-treasurer, 
@@ -37,6 +42,13 @@
     color: #dc2626;
   }
 
+.status-pending-approval, 
+.status-pending-president-approval, 
+.status-pending-board-member-approval,
+.status-pending-treasurer-approval {
+    background-color: #fef3c7;
+    color: #92400e;
+  }
 
 /* Only the dots*/  
 .priority-dot {
@@ -58,3 +70,33 @@
 .priority-high {
     background: #ef4444;
   }
+
+.status-badge-users {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  background-color: #f1f5f9;
+  color: #475569;
+}
+.status-badge-users[data-status="accepted"],
+.status-badge-users[data-status="approved"],
+.status-badge-users[data-status="active"] {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.status-badge-users[data-status="pending"] {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge-users[data-status="revoked"],
+.status-badge-users[data-status="rejected"],
+.status-badge-users[data-status="expired"],
+.status-badge-users[data-status="inactive"] {
+  background-color: #fee2e2;
+  color: #991b1b;
+}

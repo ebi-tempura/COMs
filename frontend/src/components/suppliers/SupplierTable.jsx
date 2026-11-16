@@ -16,6 +16,7 @@ function SupplierTable({
   suppliers,
   onEditSupplier,
   onInactiveSupplier,
+  onReactivateSupplier,
   onSubmitSupplier,
   onRfcValidation,
   onApproveSupplier,
@@ -24,6 +25,8 @@ function SupplierTable({
 }) {
   const { user } = useAuth();
   const { statusLabel, t, valueLabel } = useLanguage();
+  const canChangeSupplierStatus = ["President", "Board Member", "Treasurer"]
+  .includes(user?.role);
 
   return (
     <div className="table-wrapper">
@@ -61,12 +64,6 @@ function SupplierTable({
               <td>
                 <div className="icon-actions">
                   <Can module={MODULES.SUPPLIERS} action={ACTIONS.VIEW}>
-                    <button type="button" aria-label={t("supplierTable.view")}>
-                      👁
-                    </button>
-                    <button type="button" aria-label={t("supplierTable.more")}>
-                      ⋮
-                    </button>
                   </Can>
 
                   {supplier.status === SUPPLIER_STATUS.DRAFT &&
@@ -162,19 +159,25 @@ function SupplierTable({
                       {t("supplierTable.edit")}
                     </button>
                   </Can>
-
-                  <Can
-                    module={MODULES.SUPPLIERS}
-                    action={ACTIONS.DELETE_INACTIVE}
-                  >
+                  {canChangeSupplierStatus && supplier.status === SUPPLIER_STATUS.APPROVED && (
                     <button
-                      className="table-action-button"
-                      type="button"
-                      onClick={() => onInactiveSupplier(supplier.id)}
-                    >
-                      {t("supplierTable.inactive")}
-                    </button>
-                  </Can>
+                        className="table-action-button"
+                        type="button"
+                        onClick={() => onInactiveSupplier(supplier.id)}
+                      >
+                        {t("supplierTable.inactive")}
+                      </button>
+                    )}
+
+                  {canChangeSupplierStatus && supplier.status === SUPPLIER_STATUS.INACTIVE && (
+                    <button
+                        className="table-action-button"
+                        type="button"
+                        onClick={() => onReactivateSupplier(supplier.id)}
+                      >
+                        {t("supplierTable.reactivate")}
+                      </button>
+                    )}
                 </div>
               </td>
             </tr>

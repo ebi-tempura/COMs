@@ -698,3 +698,93 @@ def reject_supplier_by_board_member(
     database.refresh(supplier_record)
 
     return to_supplier_read(supplier_record)
+
+## Inactivate supplier ##
+
+@router.post("/api/suppliers/{supplier_id}/deactivate", response_model=SupplierRead)
+def deactivate_supplier(
+    supplier_id: str,
+    current_user: User = Depends(require_roles("President", "Board Member", "Treasurer")),
+    database: Session = Depends(get_db),
+):
+    supplier = database.scalar(
+        select(Supplier)
+        .where(
+            Supplier.supplier_id == supplier_id,
+            Supplier.account_id == current_user.account_id,
+        )
+        .with_for_update()
+    )
+
+    if supplier is None:
+        raise HTTPException(status_code=404, detail="Supplier not found")
+
+    if supplier.status != "Approved":
+        raise HTTPException(
+            status_code=409,
+            detail="Only approved suppliers can be deactivated",
+        )
+
+    supplier.status = "Inactive"
+
+    database.add(
+        AuditLog(
+            account_id=current_user.account_id,
+            user_id=current_user.auth_user_id,
+            user_name=f"{current_user.first_name} {current_user.last_name}",
+            user_role=current_user.user_role,
+            action="Deactivated supplier",
+            table_name="suppliers",
+            record_id=supplier_id,
+            details="Supplier status changed from Approved to Inactive",
+        )
+    )
+
+    database.commit()
+    database.refresh(supplier)
+    return to_supplier_read(supplier)
+
+## Reactivate supplier ##
+
+@router.post("/api/suppliers/{supplier_id}/reactivate", response_model=SupplierRead)
+def reactivate_supplier(
+    supplier_id: str,
+    current_user: User = Depends(require_roles("President", "Board Member", "Treasurer")),
+    database: Session = Depends(get_db),
+):
+    supplier = database.scalar(
+        select(Supplier)
+        .where(
+            Supplier.supplier_id == supplier_id,
+            Supplier.account_id == current_user.account_id,
+        )
+        .with_for_update()
+    )
+
+    if supplier is None:
+        raise HTTPException(status_code=404, detail="Supplier not found")
+
+    if supplier.status != "Inactive":
+        raise HTTPException(
+            status_code=409,
+            detail="Only inactive suppliers can be reactivated",
+        )
+
+    supplier.status = "Approved"
+
+    database.add(
+        AuditLog(
+            account_id=current_user.account_id,
+            user_id=current_user.auth_user_id,
+            user_name=f"{current_user.first_name} {current_user.last_name}",
+            user_role=current_user.user_role,
+            action="Reactivated supplier",
+            table_name="suppliers",
+            record_id=supplier_id,
+            details="Supplier status changed from Inactive to Approved",
+        )
+    )
+
+    database.commit()
+    database.refresh(supplier)
+    return to_supplier_read(supplier)

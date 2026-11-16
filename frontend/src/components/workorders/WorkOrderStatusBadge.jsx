@@ -3,7 +3,7 @@ function WorkOrderStatusBadge({ status }) {
   
     return (
       <span className={`status-badge ${statusClass}`}>
-        {status}
+        {status} 
       </span>
     );
   }

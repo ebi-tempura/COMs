@@ -511,7 +511,7 @@ def download_work_order_attachment(
         },
     )
 
-print("LOADED FILE:", __file__)
+# print("LOADED FILE:", __file__)
 
 @router.delete(
     "/api/work-orders/{work_order_number}/attachments/{attachment_number}",
@@ -577,12 +577,12 @@ def delete_work_order_attachment(
 
     return Response(status_code=204)
 
-for route in router.routes:
-    if "attachment" in route.path:
-        print(
-            "ATTACHMENT ROUTE:",
-            route.path,
-            route.methods,
-            route.endpoint.__name__,
-            inspect.signature(route.endpoint),
-        )
+# for route in router.routes:
+#     if "attachment" in route.path:
+#         print(
+#             "ATTACHMENT ROUTE:",
+#             route.path,
+#             route.methods,
+#             route.endpoint.__name__,
+#             inspect.signature(route.endpoint),
+#         )
