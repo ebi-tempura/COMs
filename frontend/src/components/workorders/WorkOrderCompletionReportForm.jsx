@@ -54,20 +54,6 @@ function WorkOrderCompletionReportForm({
 
       </div>
 
-      {/*<div className="form-group">
-        <label>Final amount*</label>
-        <input
-          name="finalAmount"
-          type="number"
-          min="0"
-          step="0.01"
-          value={formData.finalAmount}
-          onChange={handleChange}
-          placeholder="$ 0.00"
-          required
-        />
-      </div>*/}
-
       <div className="form-group form-wide">
         <label>{t("Work performed description*")}</label>
         <textarea

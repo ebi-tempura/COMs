@@ -19,6 +19,7 @@ from schemas.purchase_orders import (
 from users import require_roles
 from services.notifications.events import NotificationEvent
 from services.notifications.notification_service import create_notifications
+from services.anti_fraud import check_split_purchase
 
 
 router = APIRouter(
@@ -27,6 +28,12 @@ router = APIRouter(
  )
 
 BOARD_THRESHOLD = Decimal("10000.00")
+
+ELIGIBLE_WORK_ORDER_STATUSES = frozenset({
+    "Authorized Work Order",
+    "Completed",
+    "Approved",
+})
 
 ### Response and Numbering Helpers ###
 @router.get("", response_model=list[PurchaseOrderRead])
@@ -45,13 +52,37 @@ def list_purchase_orders(
         .order_by(PurchaseOrder.database_id.desc())
     ).all()
 
+    flag_reasons = {}
+    flag_label = "Possible split purchase."
+
+    if records and current_user.user_role in {
+        "Admin", "President", "Treasurer", "Board Member"
+    }:
+        audit_entries = database.scalars(
+            select(AuditLog)
+            .where(
+                AuditLog.account_id == current_user.account_id,
+                AuditLog.table_name == "purchase_orders",
+                AuditLog.action == "Approved purchase order by Treasurer",
+                AuditLog.record_id.in_(
+                    [record.purchase_order_number for record in records]
+                ),
+                AuditLog.details.contains(flag_label),
+            )
+            .order_by(AuditLog.created_at.desc(), AuditLog.database_id.desc())
+        ).all()
+
+        for entry in audit_entries:
+            reason_start = entry.details.index(flag_label)
+            flag_reasons.setdefault(entry.record_id, entry.details[reason_start:])
+
     results = []
 
     for record in records:
         work_order, supplier = get_related_records(database, record)
-        results.append(
-            to_purchase_order_read(record, work_order, supplier)
-        )
+        order = to_purchase_order_read(record, work_order, supplier)
+        order.flag_reason = flag_reasons.get(record.purchase_order_number)
+        results.append(order)
 
     return results
 
@@ -220,7 +251,7 @@ def create_purchase_order(
                 detail="Work order not found",
             )
 
-        if work_order.status != "Approved":
+        if work_order.status is not None and work_order.status not in ELIGIBLE_WORK_ORDER_STATUSES:
             raise HTTPException(
                 status_code=409,
                 detail="Work order must be approved",
@@ -325,7 +356,7 @@ def submit_purchase_order(
 
     work_order, supplier = get_related_records(database, purchase_order)
 
-    if work_order is not None and work_order.status != "Approved":
+    if work_order is not None and work_order.status not in ELIGIBLE_WORK_ORDER_STATUSES:
         raise HTTPException(
             status_code=409,
             detail="Work order is no longer approved",
@@ -520,15 +551,25 @@ def approve_purchase_order_treasurer(
 
     work_order, supplier = get_related_records(database, purchase_order)
 
+    split_purchase_details = check_split_purchase(
+        database, purchase_order, BOARD_THRESHOLD
+    )
+
     needs_board_approval = (
         purchase_order.amount >= BOARD_THRESHOLD
         or purchase_order.priority == "High"
+        or split_purchase_details is not None
     )
 
     if needs_board_approval:
         purchase_order.status = "Pending Board Member Approval"
     else:
         purchase_order.status = "Approved"
+
+    audit_details = f"Treasurer approved; new status: {purchase_order.status}"
+    
+    if split_purchase_details is not None:
+        audit_details = f"{audit_details}. {split_purchase_details}"
 
     audit_record = AuditLog(
         account_id=current_user.account_id,
@@ -538,7 +579,7 @@ def approve_purchase_order_treasurer(
         action="Approved purchase order by Treasurer",
         table_name="purchase_orders",
         record_id=purchase_order.purchase_order_number,
-        details=f"Treasurer approved; new status: {purchase_order.status}",
+        details=audit_details,
         work_order_id=purchase_order.work_order_id,
     )
 

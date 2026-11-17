@@ -126,6 +126,8 @@ export default function WorkOrderForm({
     setAttachmentError("");
   }
 
+  const now = new Date();
+  const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
 
   return (
     <form onSubmit={handleSubmit}>
@@ -270,6 +272,7 @@ export default function WorkOrderForm({
               id="wo-date"
               name="target_date"
               type="date"
+              min={today}
               value={formData.target_date}
               onChange={handleChange}
               required

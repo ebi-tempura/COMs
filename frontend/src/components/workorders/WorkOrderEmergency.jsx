@@ -1,13 +1,13 @@
 import { useLanguage} from "../../i18n/LanguageContext";
 import "../../styles/format.css"
 
+const now = new Date();
+const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+
 function WorkOrderEmergency({workOrder}){
-const{
+  const{
     actionLabel,
-
-
-}
-
+    }
 }
 
 function handleSubmit(event){
@@ -24,6 +24,15 @@ function handleSubmit(event){
         howmuch_happened=FromData.howmuch_happened,
     }
 
+}
+
+function handleChange(event) {
+  const { name, value } = event.target;
+
+  setFormData((current) => ({
+    ...current,
+    [name]: value,
+  }));
 }
 
 return(
@@ -63,10 +72,12 @@ return(
         </div>
 
         <div className="form-group form-wide">
-        <label> {f("workOrderEmergency.when")}</label>
+        <label htmlFor="when_happened"> {f("workOrderEmergency.when")}</label>
         <input
-         name="When it happened?"
+         id="when_happened"
+         name="when_happened"
          type="date"
+         min={today}
          value={FormData.when_happened}
          onChange={handleChange}
          placeholder={t("workOrderEmergency.descriptionPlaceholderWhen")}

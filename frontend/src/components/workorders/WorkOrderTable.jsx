@@ -13,6 +13,155 @@ const APPROVER_BY_STATUS = {
   [WORK_ORDER_STATUS.PENDING_BOARD_MEMBER_APPROVAL]: ROLES.BOARD_MEMBER,
 };
 
+function WorkOrderStatusBadge({ workOrder, refreshKey }) {
+  const { statusLabel } = useLanguage();
+  const [completionState, setCompletionState] = useState(null);
+  const [retry, setRetry] = useState(0);
+
+  const needsCompletion =
+    workOrder.status === "Authorized Work Order";
+
+  useEffect(() => {
+    if (!needsCompletion) {
+      setCompletionState(null);
+      return;
+    }
+
+    let active = true;
+    const controller = new AbortController();
+
+    setCompletionState(null);
+
+    async function loadCompletionStatus() {
+      try {
+        const records = await api(
+          `/api/work_order_comp_eme/api/work-orders/${encodeURIComponent(
+            workOrder.id
+          )}/WO-completion`,
+          { signal: controller.signal }
+        );
+
+        if (!Array.isArray(records)) {
+          throw new Error("Invalid completion report list.");
+        }
+
+        const latest = [...records].sort(
+          (a, b) => Number(b.database_id) - Number(a.database_id)
+        )[0];
+
+        if (active) {
+          setCompletionState({
+            workOrder,
+            latest: latest || null,
+            error: "",
+          });
+        }
+      } catch (error) {
+        if (active) {
+          setCompletionState({
+            workOrder,
+            latest: null,
+            error: error.message || "Unable to load completion status.",
+          });
+        }
+      }
+    }
+
+    loadCompletionStatus();
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [workOrder, needsCompletion, refreshKey, retry]);
+
+  let label = statusLabel(workOrder.status);
+  let badgeStatus = workOrder.status;
+  let title = "";
+
+  if (
+    workOrder.status === "Approved" ||
+    workOrder.status === "Completed"
+  ) {
+    label = "Approved / Closed";
+    badgeStatus = "Approved";
+  }
+
+  if (workOrder.status === "Needs Emergency Information") {
+    label = "Emergency information required";
+  }
+
+  if (needsCompletion) {
+    const loaded = completionState?.workOrder === workOrder;
+
+    if (!loaded) {
+      return (
+        <span
+          className="status-badge status-pending-approval"
+          role="status"
+        >
+          Loading status…
+        </span>
+      );
+    }
+
+    if (completionState.error) {
+      return (
+        <button
+          type="button"
+          className="table-action-button"
+          title={completionState.error}
+          onClick={() => setRetry((value) => value + 1)}
+        >
+          Status unavailable · Retry
+        </button>
+      );
+    }
+
+    const latest = completionState.latest;
+
+    label = "Work in progress";
+    badgeStatus = "In Progress";
+
+    if (latest) {
+      badgeStatus = latest.status;
+      title = `Completion report ${latest.completion_number}`;
+
+      const reviewLabels = {
+        "Pending President Approval": "Awaiting President review",
+        "Pending Treasurer Approval": "Awaiting Treasurer review",
+        "Pending Board Member Approval": "Awaiting Board Member review",
+      };
+
+      if (reviewLabels[latest.status]) {
+        label = reviewLabels[latest.status];
+      } else if (/reject/i.test(latest.status)) {
+        label = "Completion rejected";
+        badgeStatus = "Rejected";
+        title += ` · ${latest.status} · A new report is required`;
+      } else if (latest.status === "Approved") {
+        label = "Completion approved, awaiting closure";
+        badgeStatus = "Pending Approval";
+      } else {
+        label = `Completion · ${statusLabel(latest.status)}`;
+      }
+    }
+  }
+
+  const statusClass = badgeStatus
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-");
+
+  return (
+    <span
+      className={`status-badge status-${statusClass}`}
+      title={title || label}
+    >
+      {label}
+    </span>
+  );
+}
+
 function WOAttachmentsCell({ workOrderNumber, userRole, refreshKey }) {
   const [attachments, setAttachments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -176,7 +325,8 @@ export default function WorkOrderTable({
   workOrders,
   currentUser,
   disabled = false,
-  refereshKey,
+  refreshKey,
+
   onViewWorkOrder,
   onSubmitWorkOrder,
   onApproveWorkOrder,
@@ -207,10 +357,10 @@ export default function WorkOrderTable({
             <th>{t("workOrderTable.id")}</th>
             <th>{t("workOrderTable.title")}</th>
             <th>{t("workOrderTable.category")}</th>
-            <th>{t("Attachments")}</th>
+            <th>{t("workOrderTable.priority")}</th>
             <th>{t("workOrderTable.status")}</th>
             <th>Progress</th>
-            <th>{t("workOrderTable.priority")}</th>
+            <th>{t("Attachments")}</th>
             <th>{t("workOrderTable.actions")}</th>
             
           </tr>
@@ -235,30 +385,28 @@ export default function WorkOrderTable({
                 <td>{workOrder.id}</td>
                 <td>{workOrder.title}</td>
                 <td>{valueLabel("category", workOrder.category)}</td>
-                <td> <WOAttachmentsCell
-                      workOrderNumber={workOrder.id}
-                      userRole={currentUser?.role}
-                /></td>                
-                <td>
-                  <span
-                    className={`status-badge status-${workOrder.status
-                      .toLowerCase()
-                      .replaceAll(" ", "-")}`}
-                  >
-                    {statusLabel(workOrder.status)}
-                  </span>
-                </td>
-                
-                <td>
-                  <WorkOrderProgress workOrder={workOrder} />
-                </td>
 
                 <td>
                   <span
                     className={`priority-dot priority-${workOrder.priority.toLowerCase()}`}
                   />
                   {valueLabel("priority", workOrder.priority)}
+                </td> 
+
+                <td>
+                  <WorkOrderStatusBadge
+                    workOrder={workOrder}
+                    refreshKey={refreshKey ?? refreshKey}
+                  />
                 </td>
+                
+                <td>
+                  <WorkOrderProgress workOrder={workOrder} />
+                </td>
+                <td> <WOAttachmentsCell
+                      workOrderNumber={workOrder.id}
+                      userRole={currentUser?.role}
+                /></td>
 
                 <td>
                   <div className="icon-actions">

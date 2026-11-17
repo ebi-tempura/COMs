@@ -7,6 +7,52 @@ function getStatusClass(status) {
   return status.toLowerCase().replaceAll(" ", "-");
 }
 
+function POFlagCell({ order }) {
+  const dialogRef = useRef(null);
+  const headingId = `po-flag-heading-${order.database_id}`;
+
+  if (!order.flag_reason) {
+    return <span aria-label="No flag"></span>;
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        className="table-action-button"
+        aria-label={`View flag reason for ${order.purchase_order_number}`}
+        onClick={() => dialogRef.current.showModal()}
+      >
+        <span aria-hidden="true">🚩</span>
+      </button>
+
+      <dialog
+        ref={dialogRef}
+        aria-labelledby={headingId}
+        style={{
+          width: "min(28rem, calc(100% - 2rem))",
+          whiteSpace: "normal",
+          padding: 0,
+          border: 0,
+          borderRadius: "12px",
+        }}
+      >
+        <div className="wo-modal">
+          <h2 id={headingId}>Flagged purchase order</h2>
+          <p><strong>{order.purchase_order_number}</strong></p>
+          <p>{order.flag_reason}</p>
+
+          <form method="dialog">
+            <button type="button" class="secondary-button" onClick={() => dialogRef.current.close()}>
+              Close
+            </button>
+          </form>
+        </div>
+      </dialog>
+    </>
+  );
+}
+
 function PurchaseOrdersPage({ user }) {
   const [orders, setOrders] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -113,8 +159,8 @@ function PurchaseOrdersPage({ user }) {
   );
 
   // Matches the current PO backend's exact eligibility check.
-  const approvedWorkOrders = workOrders.filter(
-    (workOrder) => workOrder.status === "Approved"
+  const eligibleWorkOrders = workOrders.filter((workOrder) =>
+    ["Authorized Work Order", "Completed", "Approved"].includes(workOrder.status)
   );
 
   const supplierNames = new Map(
@@ -226,14 +272,14 @@ function PurchaseOrdersPage({ user }) {
       !approvedSuppliers.some(
         (supplier) => supplier.supplier_id === form.supplier_id
       )
-    ) {
+    ) {eligibleWorkOrders
       setError("Select an approved supplier.");
       return;
     }
 
     if (
       form.work_order_number &&
-      !approvedWorkOrders.some(
+      !eligibleWorkOrders.some(
         (order) => order.work_order_number === form.work_order_number
       )
     ) {
@@ -456,7 +502,7 @@ function PurchaseOrdersPage({ user }) {
             >
               <div className="form-grid">
                 <div className="form-group">
-                  <label htmlFor="po-title">Title</label>
+                  <label htmlFor="po-title">Title*</label>
                   <input
                     id="po-title"
                     name="title"
@@ -468,7 +514,7 @@ function PurchaseOrdersPage({ user }) {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="po-supplier">Supplier</label>
+                  <label htmlFor="po-supplier">Supplier*</label>
                   <select
                     id="po-supplier"
                     name="supplier_id"
@@ -505,7 +551,7 @@ function PurchaseOrdersPage({ user }) {
                     onChange={changeForm}
                   >
                     <option value="">No work order</option>
-                    {approvedWorkOrders.map((order) => (
+                    {eligibleWorkOrders.map((order) => (
                       <option
                         key={order.database_id}
                         value={order.work_order_number}
@@ -518,7 +564,7 @@ function PurchaseOrdersPage({ user }) {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="po-amount">Amount — MXN</label>
+                  <label htmlFor="po-amount">Amount — MXN*</label>
                   <input
                     id="po-amount"
                     name="amount"
@@ -533,7 +579,7 @@ function PurchaseOrdersPage({ user }) {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="po-priority">Priority</label>
+                  <label htmlFor="po-priority">Priority*</label>
                   <select
                     id="po-priority"
                     name="priority"
@@ -549,7 +595,7 @@ function PurchaseOrdersPage({ user }) {
                 </div>
                 
                 <div className="form-group form-wide">
-                  <label htmlFor="po-description">Description</label>
+                  <label htmlFor="po-description">Description*</label>
                   <textarea
                     id="po-description"
                     name="description"
@@ -668,6 +714,7 @@ function PurchaseOrdersPage({ user }) {
                 <th>Amount</th>
                 <th>Status</th>
                 <th>Attachments</th>
+                <th>Flag Reason</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -710,6 +757,10 @@ function PurchaseOrdersPage({ user }) {
                           userRole={user.role}
                         refreshKey={`${reload}:${busy}`}
                     /></td>
+
+                    <td>
+                      <POFlagCell order={order} />
+                    </td>
                     
                     <td>
                       <div className="icon-actions">

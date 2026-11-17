@@ -137,6 +137,8 @@ def create_work_emergency(
     database.add(record)
     database.flush()
 
+    work_order.status = "Authorized Work Order"
+
     create_notifications(
         database,
         work_order=work_order,
@@ -146,24 +148,22 @@ def create_work_emergency(
         entity_id=record.database_id,
         reference=record.emergency_number,
         user_role=current_user.user_role,
-        recipient_roles=["Staff", "Manager", "Treasurer", "Board Member"],
+        recipient_roles=["Staff", "Manager", "Treasurer", "Board Member","President"],
     )
 
-    create_notifications(
-        database,
-        work_order=work_order,
-        event=NotificationEvent.WO_EMERGENCY_APPROVAL_REQUESTED,
-        event_key=f"emergency-{record.database_id}-president",
-        entity_type="work_order",
-        entity_id=work_order.database_id,
-        reference=work_order.work_order_number,
-        user_role=current_user.user_role,
-        recipient_roles=["President"],
-        exclude_user_id=work_order.created_by_user_id,
-    )
-    
+    # create_notifications(
+    #     database,
+    #     work_order=work_order,
+    #     event=NotificationEvent.WO_EMERGENCY_APPROVAL_REQUESTED,
+    #     event_key=f"emergency-{record.database_id}-president",
+    #     entity_type="work_order",
+    #     entity_id=work_order.database_id,
+    #     reference=work_order.work_order_number,
+    #     user_role=current_user.user_role,
+    #     recipient_roles=["President"],
+    #     exclude_user_id=work_order.created_by_user_id,
+    # )
 
-    work_order.status = "Pending President Approval"
     audit_record = AuditLog(
         account_id=current_user.account_id,
         user_id=current_user.auth_user_id,
@@ -172,7 +172,10 @@ def create_work_emergency(
         action="Created emergency work order",
         table_name="work_order_emergency",
         record_id=record.emergency_number,
-        details=f"Emergency work order submitted by {current_user.user_role}",
+        details=(
+    f"Emergency information submitted by {current_user.user_role}; "
+    "initial approvals bypassed; work order ready for execution "
+    "and subsequent completion reporting"),
     )
 
     database.add(audit_record)

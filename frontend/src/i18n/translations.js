@@ -133,7 +133,7 @@ const english = {
     why:"Why it happened?*",
     how:"How it happened?*",
     howmuch:"How much it cost?*",
-    descriptionPlaceholderWhat:"What is happening?",
+    descriptionPlaceholderWhat:"What is happened?",
     descriptionPlaceholderWhere:"Where exactly is the issue located?",
     descriptionPlaceholderWho:"Who is affected, who reported it, and who needs to respond?",
     descriptionPlaceholderWhen:" When did this start, and when was it reported?",

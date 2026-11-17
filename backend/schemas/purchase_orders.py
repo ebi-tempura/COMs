@@ -33,6 +33,7 @@ class PurchaseOrderRead(BaseModel):
     status: str
     created_at: datetime
     created_by_user_id: int
+    flag_reason: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

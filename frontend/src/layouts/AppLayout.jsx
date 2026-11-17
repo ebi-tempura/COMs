@@ -47,8 +47,8 @@ async function handleLogout() {
         </nav>
         <div className="sidebar-user">
         <div className="user-info">
-          <div className="user-avatar">
-            {userName(user).charAt(0)}
+          <div className="user-avatar-initial">
+              {userName(user)?.trim().charAt(0).toUpperCase() || "?"}
           </div>
 
           <div className="user-details">

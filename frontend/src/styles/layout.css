@@ -113,16 +113,6 @@
   min-width: 0;
 }
 
-.user-avatar {
-  width: 38px;
-  height: 38px;
-  flex-shrink: 0;
-  border-radius: 999px;
-  background: #2563eb;
-  display: grid;
-  place-items: center;
-  font-weight: 800;
-}
 
 .user-info > div:last-child {
   flex: 1;
@@ -130,6 +120,17 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.user-avatar-initial {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #086ff6;
+  color: #ffffff;
+  font-weight: 700;
 }
 
 .sidebar-user strong,

@@ -63,7 +63,7 @@ def create_work_order(
     supplier = database.scalar(
     select(Supplier).where(
         Supplier.supplier_id == work_order.supplier_id,
-        Supplier.account_id == current_user.account_id,
+        Supplier.account_id == current_user.account_id, 
     )
 )
 
