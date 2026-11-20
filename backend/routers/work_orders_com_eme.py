@@ -13,7 +13,9 @@ from models import ( User,
 
 from schemas.work_orders import (
                     WorkCompletionCreate,WorkCompletionRead,
-                    WorkEmergencyCreate, WorkEmergencyRead,)
+                    WorkEmergencyCreate, WorkEmergencyRead,
+                    WorkCompletionReject
+                    )
 
 from auth import get_supabase_user
 
@@ -388,6 +390,7 @@ def read_work_completion(
 def approve_work_completion_by_president(
     work_order_number: str,
     completion_number: str,
+
     current_user: User = Depends(require_roles("President")),
     database: Session = Depends(get_db),
 ):
@@ -682,6 +685,7 @@ def approve_work_completion_by_board_member(
 def reject_work_completion_by_president(
     work_order_number: str,
     completion_number: str,
+    payload: WorkCompletionReject,
     current_user: User = Depends(require_roles("President")),
     database: Session = Depends(get_db),
 ):
@@ -733,7 +737,7 @@ def reject_work_completion_by_president(
         action="Rejected work order completion",
         table_name="work_order_completion",
         record_id=completion_record.completion_number,
-        details="Rejected",
+        details=f"Work order completion rejected by President: {payload.reason}",
     )
 
     database.add(audit_record)
@@ -763,6 +767,7 @@ def reject_work_completion_by_president(
 def reject_work_completion_by_treasurer(
     work_order_number: str,
     completion_number: str,
+    payload: WorkCompletionReject,
     current_user: User = Depends(require_roles("Treasurer")),
     database: Session = Depends(get_db),
 ):
@@ -814,7 +819,7 @@ def reject_work_completion_by_treasurer(
         action="Reject work order completion",
         table_name="work_order_completion",
         record_id=completion_record.completion_number,
-        details="Work order completion rejected by Treasurer",
+        details=f"Work order completion rejected by Treasurer: {payload.reason}",
     )
 
     database.add(audit_record)
@@ -844,6 +849,7 @@ def reject_work_completion_by_treasurer(
 def reject_work_completion_by_board_member(
     work_order_number: str,
     completion_number: str,
+    payload: WorkCompletionReject,
     current_user: User = Depends(require_roles("Board Member")),
     database: Session = Depends(get_db),
 ):
@@ -895,7 +901,7 @@ def reject_work_completion_by_board_member(
         action="Rejected work order completion",
         table_name="work_order_completion",
         record_id=completion_record.completion_number,
-        details="Work order completion rejected by Board Member",
+        details=f"Work order completion rejected by Board Member: {payload.reason}",
     )
 
     database.add(audit_record)

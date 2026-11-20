@@ -1,8 +1,8 @@
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, StringConstraints
 
 
 class WorkOrderCreate(BaseModel):
@@ -126,4 +126,9 @@ class WorkCompletionRead (WorkCompletionCreate):
     created_by_user_id: int
 
     model_config = ConfigDict(from_attributes=True)
+
+class WorkCompletionReject(BaseModel):
+    comment: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1)
+    ]
 

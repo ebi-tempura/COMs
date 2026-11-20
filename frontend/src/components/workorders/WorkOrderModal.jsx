@@ -228,6 +228,25 @@ export default function WorkOrderModal({
     ) {
       return;
     }
+    
+    const options = { method: "POST" };
+
+    if (decision === "reject") {
+      const reason = window.prompt(
+        `Why are you rejecting completion ${record.completion_number}?`
+      );
+
+      if (reason === null) return;
+
+      const comment = reason.trim();
+
+      if (!comment) {
+        setMessage("Enter a reason to reject the completion report.");
+        return;
+      }
+
+      options.body = JSON.stringify({ comment });
+    }
 
     lock.current = true;
     setBusy(true);
@@ -589,8 +608,7 @@ function WorkOrderAttachments({ workOrderNumber, canOperate }) {
                   onClick={() => {
                     if (!window.confirm(`Delete ${attachment.original_filename}?`)) {
                       return;
-                    }
-
+                    } 
                     perform(async () => {
                       await api(fileUrl, { method: "DELETE" });
                       setAttachments(await api(url));

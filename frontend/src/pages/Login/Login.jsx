@@ -123,6 +123,9 @@ function Login() {
 
             </form>
           </section>
+
+          <small className="login-version">COMs v0.7.0</small>
+          
         </main>
         <div className="login-image-panel" aria-hidden="true"/>
       </div>

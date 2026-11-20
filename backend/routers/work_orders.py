@@ -17,6 +17,8 @@ from users import get_current_user
 from services.notifications.events import NotificationEvent
 from services.notifications.notification_service import create_notifications
 from services.numbering import lock_account_numbering
+from typing import Annotated
+from pydantic import StringConstraints
 
 router = APIRouter(    
     prefix="/api/work_orders",
@@ -24,7 +26,6 @@ router = APIRouter(
     )
 
 audit_logger = logging.getLogger(__name__)
-
 
 def to_work_order_read(record: WorkOrder) -> WorkOrderRead:
     
