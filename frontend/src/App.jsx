@@ -16,7 +16,7 @@ import PurchaseOrders from "./pages/PurchaseOrders/PurchaseOrders";
 import Users from "./pages/Users/Users";
 import ResetPassword from "./pages/Login/ResetPassword";
 import ForgotPassword from "./pages/Login/ForgotPassword";
-import LanguageSwitcher from "./components/common/LanguageSwitcher";
+import Settings from "./pages/Settings/Settings";
 import { useLanguage } from "./i18n/LanguageContext";
 
 function PlaceholderPage({ translationKey }) {
@@ -69,6 +69,7 @@ function App() {
               path="/users"
               element={<Users />}
             />
+            <Route path="/settings" element={<Settings />} />
           </Route>
         </Route>
       </Routes>

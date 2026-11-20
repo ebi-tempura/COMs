@@ -45,6 +45,7 @@ async function handleLogout() {
           <NavLink to="/reports">{t("nav.reports")}</NavLink>
           <NavLink to="/documents">{t("nav.documents")}</NavLink>
           <NavLink to="/users">{ui("Users")}</NavLink>
+          <NavLink to="/settings">{t("nav.settings")}</NavLink>
         </nav>
         <div className="sidebar-user">
         <div className="user-info">
