@@ -737,7 +737,7 @@ def reject_work_completion_by_president(
         action="Rejected work order completion",
         table_name="work_order_completion",
         record_id=completion_record.completion_number,
-        details=f"Work order completion rejected by President: {payload.reason}",
+        details=f"Work order completion rejected by President: {payload.comment}",
     )
 
     database.add(audit_record)
@@ -819,7 +819,7 @@ def reject_work_completion_by_treasurer(
         action="Reject work order completion",
         table_name="work_order_completion",
         record_id=completion_record.completion_number,
-        details=f"Work order completion rejected by Treasurer: {payload.reason}",
+        details=f"Work order completion rejected by Treasurer: {payload.comment}",
     )
 
     database.add(audit_record)
@@ -901,7 +901,7 @@ def reject_work_completion_by_board_member(
         action="Rejected work order completion",
         table_name="work_order_completion",
         record_id=completion_record.completion_number,
-        details=f"Work order completion rejected by Board Member: {payload.reason}",
+        details=f"Work order completion rejected by Board Member: {payload.comment}",
     )
 
     database.add(audit_record)

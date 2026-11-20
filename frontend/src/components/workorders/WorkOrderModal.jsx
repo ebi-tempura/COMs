@@ -259,7 +259,7 @@ export default function WorkOrderModal({
         `${BASE}/${encodedNumber}/WO-completion/` +
           `${encodeURIComponent(record.completion_number)}/` +
           `${decision}-${step.endpoint}`,
-        { method: "POST" }
+        options
       );
 
       setRecords((current) =>
