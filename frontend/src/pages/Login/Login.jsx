@@ -5,6 +5,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { supabase } from "../../lib/supabaseClient";
 
 function Login() {
+  const { ui } = useLanguage();
   const navigate = useNavigate();
   const { t } = useLanguage();
   const {
@@ -35,7 +36,7 @@ function Login() {
       if (error) throw error;
       // AuthContext loads /api/me before allowing navigation.
     } catch (err) {
-      setLoginError(err.message || "Unable to sign in.");
+      setLoginError(err.message || ui("Unable to sign in."));
     } finally {
       setBusy(false);
     }
@@ -70,12 +71,12 @@ function Login() {
                   disabled={busy || loading}
                   onClick={refreshUser}
                 >
-                  Retry account connection
+                  {ui("Retry account connection")}
                 </button>
               )}
 
               {loading && (
-                <p role="status">Loading your COMs account…</p>
+                <p role="status">{ui("Loading your COMs account…")}</p>
               )}
               
               
@@ -114,7 +115,7 @@ function Login() {
                 type="submit"
                 disabled={busy || loading}
               >
-                {busy || loading ? "Signing in…" : t("login.signIn")}
+                {busy || loading ? ui("Signing in…") : t("login.signIn")}
               </button> 
 
               <button type="button" className="button.secondarybutton" onClick={() => navigate("/register")}>

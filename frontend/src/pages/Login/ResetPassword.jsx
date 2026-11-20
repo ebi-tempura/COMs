@@ -1,8 +1,10 @@
+import { useLanguage } from "../../i18n/LanguageContext";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function ResetPassword() {
+  const { ui } = useLanguage();
   const [checking, setChecking] = useState(true);
   const [ready, setReady] = useState(false);
   const [password, setPassword] = useState("");
@@ -23,7 +25,7 @@ export default function ResetPassword() {
 
         if (query.has("error") || hash.has("error")) {
           throw new Error(
-            "This reset link is invalid or has expired. Request a new link."
+            ui("This reset link is invalid or has expired. Request a new link.")
           );
         }
 
@@ -37,7 +39,7 @@ export default function ResetPassword() {
 
         if (!session) {
           throw new Error(
-            "No recovery session found. Open the latest reset link from your email."
+            ui("No recovery session found. Open the latest reset link from your email.")
           );
         }
 
@@ -47,7 +49,7 @@ export default function ResetPassword() {
         if (active) setReady(true);
       } catch (err) {
         if (active) {
-          setError(err.message || "Unable to verify the reset link.");
+          setError(err.message || ui("Unable to verify the reset link."));
         }
       } finally {
         if (active) setChecking(false);
@@ -68,7 +70,7 @@ export default function ResetPassword() {
     setError("");
 
     if (password !== confirmPassword) {
-      setError("The passwords do not match.");
+      setError(ui("The passwords do not match."));
       return;
     }
 
@@ -92,12 +94,11 @@ export default function ResetPassword() {
 
       if (signOutError) {
         setError(
-          "Your password was updated, but automatic sign-out failed. " +
-          "Sign out of COMS before testing your new password."
+          ui("Your password was updated, but automatic sign-out failed. Sign out of COMS before testing your new password.")
         );
       }
     } catch (err) {
-      setError(err.message || "Unable to update your password.");
+      setError(err.message || ui("Unable to update your password."));
     } finally {
       setBusy(false);
     }
@@ -110,9 +111,9 @@ export default function ResetPassword() {
           <img src="/Logo-blue.png" alt="PAX Aurora" />
         </div>
 
-        <h1>Set a new password</h1>
+        <h1>{ui("Set a new password")}</h1>
 
-        {checking && <p role="status">Checking your reset link…</p>}
+        {checking && <p role="status">{ui("Checking your reset link…")}</p>}
 
         {error && (
           <p className="form-error" role="alert">
@@ -122,15 +123,15 @@ export default function ResetPassword() {
 
         {done ? (
           <div>
-            <p role="status">Your password has been updated.</p>
-            <Link to="/login">Return to login</Link>
+            <p role="status">{ui("Your password has been updated.")}</p>
+            <Link to="/login">{ui("Return to login")}</Link>
           </div>
         ) : (
           <>
             {ready && (
               <form className="login-form" onSubmit={handleSubmit}>
                 <label>
-                  New password
+                  {ui("New password")}
                   <input
                     type="password"
                     autoComplete="new-password"
@@ -143,7 +144,7 @@ export default function ResetPassword() {
                 </label>
 
                 <label>
-                  Confirm new password
+                  {ui("Confirm new password")}
                   <input
                     type="password"
                     autoComplete="new-password"
@@ -158,13 +159,13 @@ export default function ResetPassword() {
                 </label>
 
                 <button className="button" type="submit" disabled={busy}>
-                  {busy ? "Saving…" : "Save new password"}
+                  {busy ? ui("Saving…") : ui("Save new password")}
                 </button>
               </form>
             )}
 
             {!checking && !ready && (
-              <Link to="/forgot-password">Request a new reset link</Link>
+              <Link to="/forgot-password">{ui("Request a new reset link")}</Link>
             )}
           </>
         )}

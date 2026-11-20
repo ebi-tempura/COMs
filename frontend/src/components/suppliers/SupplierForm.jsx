@@ -29,6 +29,7 @@ const serviceCategories = [
 const paymentMethods = ["Bank transfer", "Cash", "Card", "Other"];
 
 function SupplierForm({ onCreateSupplier }) {
+  const { ui } = useLanguage();
   const { t, valueLabel } = useLanguage();
   const [formData, setFormData] = useState(initialForm);
 
@@ -147,10 +148,10 @@ function SupplierForm({ onCreateSupplier }) {
       </div>
 
       <div className="attachment-box form-wide">
-        <strong>Attachments</strong>
-        <p>Attach an invoice or supporting document.</p>
-        <button type="button">Browse files</button>
-        <small>PDF, JPG or PNG. Maximum 10 MB per file.</small>
+        <strong>{ui("Attachments")}</strong>
+        <p>{ui("Attach an invoice or supporting document.")}</p>
+        <button type="button">{ui("Browse files")}</button>
+        <small>{ui("PDF, JPG or PNG. Maximum 10 MB per file.")}</small>
       </div>
 
       <div className="form-actions">

@@ -1,3 +1,4 @@
+import { useLanguage } from "../../i18n/LanguageContext";
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import Card from '../../components/common/Card'; 
@@ -5,6 +6,7 @@ import Card from '../../components/common/Card';
 const roles = ['Resident', 'Staff', 'Manager', 'President', 'Board Member', 'Treasurer', 'Admin'];
 
 export default function Users() {
+  const { ui, roleLabel, statusLabel } = useLanguage();
   
   const [users, setUsers] = useState([]);
   const [invitations, setInvitations] = useState([]);
@@ -59,8 +61,8 @@ export default function Users() {
     
     <div className="page-header">
       <div>
-        <h1>User management</h1>
-        <p1>Create, invite and remove users</p1>
+        <h1>{ui("User management")}</h1>
+        <p1>{ui("Create, invite and remove users")}</p1>
       </div>  
     </div>
     {error && <p role="alert">{error}</p>}
@@ -88,7 +90,7 @@ export default function Users() {
       <Card>
         <div className="login-form">
           <label>
-            Email
+            {ui("Email")}
             <input
               type="email"
               required
@@ -100,7 +102,7 @@ export default function Users() {
           </label>
 
           <label className="role-field" htmlFor="user-role">
-            <span>Role</span>
+            <span>{ui("Role")}</span>
 
             <select
               id="user-role"
@@ -110,14 +112,14 @@ export default function Users() {
             >
               {roles.map((item) => (
                 <option key={item} value={item}>
-                  {item}
+                  {roleLabel(item)}
                 </option>
               ))}
             </select>
 </label>
 
         <button type="submit" disabled={busy}>
-          {busy ? "Please wait…" : "Create invitation"}
+          {busy ? ui("Please wait…") : ui("Create invitation")}
         </button>
         </div>
       </Card>
@@ -130,23 +132,23 @@ export default function Users() {
       <div className="panel-title">
         <div className="table-tools">
           <input
-            aria-label="Search users"
+            aria-label={ui("Search users")}
             type="search"
-            placeholder="Search users…"
+            placeholder={ui("Search users…")}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
 
           <select
-            aria-label="Filter by status"
+            aria-label={ui("Filter by status")}
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
           >
-            <option value="All">All statuses</option>
+            <option value="All">{ui("All statuses")}</option>
 
             {statuses.map((status) => (
               <option key={status} value={status}>
-                {status}
+                {statusLabel(status)}
               </option>
             ))}
           </select>
@@ -156,11 +158,11 @@ export default function Users() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>Action</th>
+              <th>{ui("Name")}</th>
+              <th>{ui("Email")}</th>
+              <th>{ui("Role")}</th>
+              <th>{ui("Status")}</th>
+              <th>{ui("Action")}</th>
             </tr>
           </thead>
 
@@ -168,23 +170,23 @@ export default function Users() {
           <tbody>{users.map(u => <tr key={u.database_id}>
             <td>{u.first_name} {u.last_name}</td>
             <td>{u.email}</td>
-            <td>{admin ? <select aria-label={`Role for ${u.email}`} value={u.user_role} disabled={busy}
+            <td>{admin ? <select aria-label={ui("Role for {email}", { email: u.email })} value={u.user_role} disabled={busy}
               onChange={e => perform(() => api(`/api/users/${u.database_id}/role`, { method: 'PATCH', body: JSON.stringify({ user_role: e.target.value }) }))}>
-              {roles.map(r => <option key={r}>{r}</option>)}
-            </select> : u.user_role}</td>
+              {roles.map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
+            </select> : roleLabel(u.user_role)}</td>
             <td>
               <span
                 className="status-badge-users"
                 data-status={String(u.status ?? "").trim().toLowerCase()}
               >
-                {u.status}
+                {statusLabel(u.status)}
               </span>
             </td>
 
             <td>{admin && <button disabled={busy} onClick={() => {
-              if (u.status === 'Active' && !window.confirm(`Deactivate ${u.email}? Their COMs access will be blocked.`)) return;
+              if (u.status === 'Active' && !window.confirm(ui("Deactivate {email}? Their COMs access will be blocked.", { email: u.email }))) return;
               perform(() => api(`/api/users/${u.database_id}/status`, { method: 'PATCH', body: JSON.stringify({ status: u.status === 'Active' ? 'Inactive' : 'Active' }) }));
-            }}>{u.status === 'Active' ? 'Deactivate' : 'Reactivate'}</button>}</td>
+            }}>{u.status === 'Active' ? ui("Deactivate") : ui("Reactivate")}</button>}</td>
           </tr>)}
           
           </tbody>
@@ -195,16 +197,16 @@ export default function Users() {
     <Card>
       {admin && (
         <>
-          <h2>Invitations</h2>
+          <h2>{ui("Invitations")}</h2>
 
           <div className="table-wrapper">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Email</th>
-                  <th>Role</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th>{ui("Email")}</th>
+                  <th>{ui("Role")}</th>
+                  <th>{ui("Status")}</th>
+                  <th>{ui("Actions")}</th>
                 </tr>
               </thead>
 
@@ -229,13 +231,13 @@ export default function Users() {
                   return (
                     <tr key={i.database_id}>
                       <td>{i.email}</td>
-                      <td>{i.user_role}</td>
+                      <td>{roleLabel(i.user_role)}</td>
                      <td>
                         <span
                           className="status-badge-users"
                           data-status={String(status ?? "").trim().toLowerCase()}
                         >
-                          {status}
+                          {statusLabel(status)}
                         </span>
                       </td>
                       <td>
@@ -250,7 +252,7 @@ export default function Users() {
                               )
                             }
                           >
-                            Revoke
+                            {ui("Revoke")}
                           </button>
                         )}
                       </td>
@@ -260,7 +262,7 @@ export default function Users() {
 
                 {invitations.length === 0 && (
                   <tr>
-                    <td colSpan={4}>No invitations found.</td>
+                    <td colSpan={4}>{ui("No invitations found.")}</td>
                   </tr>
                 )}
               </tbody>

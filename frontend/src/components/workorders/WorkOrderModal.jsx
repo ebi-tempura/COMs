@@ -1,3 +1,4 @@
+import { useLanguage } from "../../i18n/LanguageContext";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api, apiDownload } from "../../lib/api";
@@ -59,6 +60,7 @@ export default function WorkOrderModal({
   onClose,
   onChanged,
 }) {
+  const { ui, statusLabel } = useLanguage();
   const dialogRef = useRef(null);
   const lock = useRef(false);
   const dirty = useRef(false);
@@ -84,12 +86,12 @@ export default function WorkOrderModal({
     : `${BASE}/${encodedNumber}/${resource}`;
 
   const title = isDetails
-    ? "Work order details"
+    ? ui("Work order details")
     : isAudit
-      ? "Audit trail"
+      ? ui("Audit trail")
       : isEmergency
-        ? "Emergency information"
-        : "Completion reports";
+        ? ui("Emergency information")
+        : ui("Completion reports");
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -112,7 +114,7 @@ export default function WorkOrderModal({
     
     if (!canRead) {
       setLoading(false);
-      setError("Your role cannot view the audit trail.");
+      setError(ui("Your role cannot view the audit trail."));
       return;
     }
 
@@ -125,11 +127,11 @@ export default function WorkOrderModal({
       try {
         const result = await api(url, { signal: controller.signal });
         if (!Array.isArray(result)) {
-          throw new Error("The backend returned an invalid report list.");
+          throw new Error(ui("The backend returned an invalid report list."));
         }
         if (active) setRecords(result);
       } catch (err) {
-        if (active) setError(err.message || "Unable to load records.");
+        if (active) setError(err.message || ui("Unable to load records."));
       } finally {
         if (active) setLoading(false);
       }
@@ -146,7 +148,7 @@ export default function WorkOrderModal({
     if (lock.current) return;
     if (
       dirty.current &&
-      !window.confirm("Discard the information entered in this form?")
+      !window.confirm(ui("Discard the information entered in this form?"))
     ) {
       return;
     }
@@ -182,7 +184,7 @@ export default function WorkOrderModal({
     );
 
     if (Object.values(payload).some((value) => !value)) {
-      setMessage("Please complete every field; spaces alone are not valid.");
+      setMessage(ui("Please complete every field; spaces alone are not valid."));
       return;
     }
 
@@ -200,11 +202,11 @@ export default function WorkOrderModal({
       if (isEmergency) setEmergencySubmitted(true);
       dirty.current = false;
       form.reset();
-      setMessage(`Saved successfully: ${saved.status}.`);
+      setMessage(ui("Saved successfully: {status}.", { status: statusLabel(saved.status) }));
       onChanged();
     } catch (err) {
       // Preserve the form so the user can correct it or retry.
-      setMessage(err.message || "Unable to submit the report.");
+      setMessage(err.message || ui("Unable to submit the report."));
     } finally {
       lock.current = false;
       setBusy(false);
@@ -233,7 +235,7 @@ export default function WorkOrderModal({
 
     if (decision === "reject") {
       const reason = window.prompt(
-        `Why are you rejecting completion ${record.completion_number}?`
+        ui("Why are you rejecting completion {number}?", { number: record.completion_number })
       );
 
       if (reason === null) return;
@@ -241,7 +243,7 @@ export default function WorkOrderModal({
       const comment = reason.trim();
 
       if (!comment) {
-        setMessage("Enter a reason to reject the completion report.");
+        setMessage(ui("Enter a reason to reject the completion report."));
         return;
       }
 
@@ -265,10 +267,10 @@ export default function WorkOrderModal({
           item.completion_number === saved.completion_number ? saved : item
         )
       );
-      setMessage(`${saved.completion_number}: ${saved.status}`);
+      setMessage(`${saved.completion_number}: ${statusLabel(saved.status)}`);
       onChanged();
     } catch (err) {
-      setMessage(err.message || "Unable to review the report.");
+      setMessage(err.message || ui("Unable to review the report."));
     } finally {
       lock.current = false;
       setBusy(false);
@@ -296,22 +298,22 @@ export default function WorkOrderModal({
           disabled={busy}
           onClick={requestClose}
         >
-          Close
+          {ui("Close")}
         </button>
       </div>
 
       <div className="wo-modal-body">
-        <p><strong>Work order status:</strong> {workOrder.status}</p>
+        <p><strong>{ui("Work order status:")}</strong> {statusLabel(workOrder.status)}</p>
         {isDetails && (
           <div className="wo-saved-report">
             <dl>
-              <dt>Description</dt>
+              <dt>{ui("Description")}</dt>
               <dd>{workOrder.description || "—"}</dd>
 
-              <dt>Supplier</dt>
+              <dt>{ui("Supplier")}</dt>
               <dd>{workOrder.supplier || "—"}</dd>
 
-              <dt>Amount</dt>
+              <dt>{ui("Amount")}</dt>
               <dd>
                 {workOrder.amount == null
                   ? "—"
@@ -321,25 +323,25 @@ export default function WorkOrderModal({
                     })}
               </dd>
 
-              <dt>Type</dt>
+              <dt>{ui("Type")}</dt>
               <dd>{workOrder.type || "—"}</dd>
 
-              <dt>Category</dt>
+              <dt>{ui("Category")}</dt>
               <dd>{workOrder.category || "—"}</dd>
 
-              <dt>Priority</dt>
+              <dt>{ui("Priority")}</dt>
               <dd>{workOrder.priority || "—"}</dd>
 
-              <dt>Location</dt>
+              <dt>{ui("Location")}</dt>
               <dd>{workOrder.location || "—"}</dd>
 
-              <dt>Target date</dt>
+              <dt>{ui("Target date")}</dt>
               <dd>{workOrder.targetDate || "—"}</dd>
 
-              <dt>Created by</dt>
+              <dt>{ui("Created by")}</dt>
               <dd>{workOrder.requestedBy || "—"}</dd>
 
-              <dt>Created on</dt>
+              <dt>{ui("Created on")}</dt>
               <dd>{displayDate(workOrder.createdAt)}</dd>
             </dl>
 
@@ -350,7 +352,7 @@ export default function WorkOrderModal({
           </div>
         )}
 
-        {loading && <p role="status">Loading…</p>}
+        {loading && <p role="status">{ui("Loading…")}</p>}
         {message && <p role="status">{message}</p>}
 
         {error && (
@@ -363,7 +365,7 @@ export default function WorkOrderModal({
                 disabled={loading || busy}
                 onClick={() => setReload((value) => value + 1)}
               >
-                Retry
+                {ui("Retry")}
               </button>
             )}
           </div>
@@ -373,12 +375,12 @@ export default function WorkOrderModal({
           <form onSubmit={submitReport} onChange={() => { dirty.current = true; }}>
             <fieldset disabled={busy} className="wo-report-fields">
               <legend>
-                {isEmergency ? "Submit emergency information" : "Submit completion"}
+                {isEmergency ? ui("Submit emergency information") : ui("Submit completion")}
               </legend>
 
               {fields.map(([name, label, type]) => (
                 <label key={name} htmlFor={`wo-${name}`}>
-                  {label}
+                  {ui(label)}
                   {type === "date" ? (
                     <input
                       id={`wo-${name}`}
@@ -399,7 +401,7 @@ export default function WorkOrderModal({
               ))}
 
               <button type="submit" className="primary-action-button">
-                {busy ? "Saving…" : "Submit report"}
+                {busy ? ui("Saving…") : ui("Submit report")}
               </button>
             </fieldset>
           </form>
@@ -410,13 +412,13 @@ export default function WorkOrderModal({
             {!isEmergency && canOperate && !canSubmit && (
               <p>
                 {hasPendingOrApprovedReport
-                  ? "A completion report is pending approval or already approved."
-                  : "Completion submission requires an Authorized Work Order."}
+                  ? ui("A completion report is pending approval or already approved.")
+                  : ui("Completion submission requires an Authorized Work Order.")}
               </p>
             )}
 
-            <h3>Saved reports</h3>
-            {records.length === 0 && <p>No reports submitted yet.</p>}
+            <h3>{ui("Saved reports")}</h3>
+            {records.length === 0 && <p>{ui("No reports submitted yet.")}</p>}
 
             {[...records].reverse().map((record) => {
               const reference = isEmergency
@@ -431,16 +433,16 @@ export default function WorkOrderModal({
               return (
                 <article className="wo-saved-report" key={record.database_id}>
                   <h4>{reference}</h4>
-                  <p><strong>Status:</strong> {record.status}</p>
+                  <p><strong>{ui("Status:")}</strong> {statusLabel(record.status)}</p>
                   <p>
-                    Submitted {displayDate(record.created_at)}
-                    {" · "}User #{record.created_by_user_id}
+                    {ui("Submitted")} {displayDate(record.created_at)}
+                    {" · "}{ui("User #")}{record.created_by_user_id}
                   </p>
 
                   <dl>
                     {fields.map(([name, label]) => (
                       <div key={name}>
-                        <dt>{label}</dt>
+                        <dt>{ui(label)}</dt>
                         <dd>{record[name] || "—"}</dd>
                       </div>
                     ))}
@@ -454,7 +456,7 @@ export default function WorkOrderModal({
                         disabled={busy}
                         onClick={() => reviewReport(record, "approve")}
                       >
-                        Approve completion
+                        {ui("Approve completion")}
                       </button>
                       <button
                         type="button"
@@ -462,7 +464,7 @@ export default function WorkOrderModal({
                         disabled={busy}
                         onClick={() => reviewReport(record, "reject")}
                       >
-                        Reject completion
+                        {ui("Reject completion")}
                       </button>
                     </div>
                   )}
@@ -474,7 +476,7 @@ export default function WorkOrderModal({
 
         {!loading && !error && isAudit && !isDetails && (
           <>
-            {records.length === 0 && <p>No audit records found.</p>}
+            {records.length === 0 && <p>{ui("No audit records found.")}</p>}
             {records.map((record) => (
               <article className="wo-saved-report" key={record.database_id}>
                 <h3>{record.action}</h3>
@@ -482,7 +484,7 @@ export default function WorkOrderModal({
                   {record.user_name} · {record.user_role}
                   {" · "}{displayDate(record.created_at)}
                 </p>
-                <p><strong>Reference:</strong> {record.record_id}</p>
+                <p><strong>{ui("Reference:")}</strong> {record.record_id}</p>
                 <p className="wo-preserve-text">{record.details}</p>
               </article>
             ))}
@@ -495,6 +497,7 @@ export default function WorkOrderModal({
 }
 
 function WorkOrderAttachments({ workOrderNumber, canOperate }) {
+  const { ui } = useLanguage();
   const url =
     `/api/attachments/api/work-orders/${encodeURIComponent(workOrderNumber)}/attachments`;
 
@@ -561,11 +564,11 @@ function WorkOrderAttachments({ workOrderNumber, canOperate }) {
 
   return (
     <section>
-      <h3>Attachments</h3>
+      <h3>{ui("Attachments")}</h3>
 
       {canOperate && (
         <label>
-          Add files
+          {ui("Add files")}
           <input
             type="file"
             multiple
@@ -577,9 +580,9 @@ function WorkOrderAttachments({ workOrderNumber, canOperate }) {
       )}
 
       {error && <p role="alert">{error}</p>}
-      {loading && <p role="status">Loading attachments…</p>}
+      {loading && <p role="status">{ui("Loading attachments…")}</p>}
       {!loading && !error && attachments.length === 0 && (
-        <p>No attachments yet.</p>
+        <p>{ui("No attachments yet.")}</p>
       )}
 
       <ul>
@@ -599,14 +602,14 @@ function WorkOrderAttachments({ workOrderNumber, canOperate }) {
                   )
                 }
               >
-                Download
+                {ui("Download")}
               </button>{" "}
               {canOperate && (
                 <button
                   type="button"
                   disabled={busy}
                   onClick={() => {
-                    if (!window.confirm(`Delete ${attachment.original_filename}?`)) {
+                    if (!window.confirm(ui("Delete {filename}?", { filename: attachment.original_filename }))) {
                       return;
                     } 
                     perform(async () => {
@@ -615,7 +618,7 @@ function WorkOrderAttachments({ workOrderNumber, canOperate }) {
                     });
                   }}
                 >
-                  Delete
+                  {ui("Delete")}
                 </button>
               )}
             </li>

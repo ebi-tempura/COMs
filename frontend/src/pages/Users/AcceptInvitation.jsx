@@ -1,3 +1,4 @@
+import { useLanguage } from "../../i18n/LanguageContext";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import TermsAndConditions, {TERMS_VERSION,
@@ -98,6 +99,7 @@ function Card({ children }) {
 }
 
 function Terms({ onClose }) {
+  const { ui } = useLanguage();
   return (
     <dialog
       ref={(element) => {
@@ -105,7 +107,7 @@ function Terms({ onClose }) {
       }}
       onCancel={onClose}
       onClose={onClose}
-      aria-label="Terms and Conditions"
+      aria-label={ui("Terms and Conditions")}
       style={{
         width: "min(640px, calc(100vw - 32px))",
         maxHeight: "80vh",
@@ -122,13 +124,14 @@ function Terms({ onClose }) {
       <TermsAndConditions />
 
       <button type="button" className="button" onClick={onClose}>
-        Close
+        {ui("Close")}
       </button>
     </dialog>
   );
 }
 
 function CompleteInvitation({ token, callbackError }) {
+  const { ui } = useLanguage();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(true);
   const [accepted, setAccepted] = useState(false);
@@ -143,7 +146,7 @@ function CompleteInvitation({ token, callbackError }) {
 
     async function complete() {
       if (!token) {
-        throw new Error("Invitation missing. Open your invitation email.");
+        throw new Error(ui("Invitation missing. Open your invitation email."));
       }
 
       if (callbackError) {
@@ -161,8 +164,7 @@ function CompleteInvitation({ token, callbackError }) {
 
         if (!session) {
           throw new Error(
-            "No confirmed session was found. Open the confirmation " +
-            "email in the same browser where you completed the form."
+            ui("No confirmed session was found. Open the confirmation email in the same browser where you completed the form.")
           );
         }
 
@@ -182,8 +184,7 @@ function CompleteInvitation({ token, callbackError }) {
 
       if (signOutError) {
         throw new Error(
-          "Your invitation was accepted, but sign-out could not finish. " +
-          "Click Continue to login to try again."
+          ui("Your invitation was accepted, but sign-out could not finish. Click Continue to login to try again.")
         );
       }
     }
@@ -204,7 +205,7 @@ function CompleteInvitation({ token, callbackError }) {
       .catch((err) => {
         if (!active) return;
         setAccepted(membershipCreated.current);
-        setError(err.message || "Unable to finish your invitation.");
+        setError(err.message || ui("Unable to finish your invitation."));
       })
       .finally(() => {
         if (active) setBusy(false);
@@ -224,12 +225,12 @@ function CompleteInvitation({ token, callbackError }) {
   return (
     <Card>
       <h1>
-        {accepted ? "Invitation accepted" : "Finishing your invitation"}
+        {accepted ? ui("Invitation accepted") : ui("Finishing your invitation")}
       </h1>
 
       {busy && (
         <p role="status">
-          Please wait while we finish and open login…
+          {ui("Please wait while we finish and open login…")}
         </p>
       )}
 
@@ -244,7 +245,7 @@ function CompleteInvitation({ token, callbackError }) {
             onClick={retry}
             disabled={busy}
           >
-            {accepted ? "Continue to login" : "Try again"}
+            {accepted ? ui("Continue to login") : ui("Try again")}
           </button>
         </>
       )}
@@ -253,6 +254,7 @@ function CompleteInvitation({ token, callbackError }) {
 }
 
 function InvitationForm({ token }) {
+  const { ui } = useLanguage();
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
@@ -288,27 +290,27 @@ function InvitationForm({ token }) {
       const lastName = form.last_name.trim();
 
       if (!token) {
-        throw new Error("Open the invitation link sent by your Admin.");
+        throw new Error(ui("Open the invitation link sent by your Admin."));
       }
 
       if (!firstName || !lastName || !email) {
-        throw new Error("Complete your name and invited email.");
+        throw new Error(ui("Complete your name and invited email."));
       }
 
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        throw new Error("Enter a valid invited email address.");
+        throw new Error(ui("Enter a valid invited email address."));
       }
 
       if (!terms) {
-        throw new Error("Please accept the Terms and Conditions.");
+        throw new Error(ui("Please accept the Terms and Conditions."));
       }
 
       if (form.password.length < 8) {
-        throw new Error("Use a password with at least 8 characters.");
+        throw new Error(ui("Use a password with at least 8 characters."));
       }
 
       if (form.password !== form.confirmPassword) {
-        throw new Error("Passwords do not match.");
+        throw new Error(ui("Passwords do not match."));
       }
 
       await post("/api/users/invitations/validate", { token, email });
@@ -360,8 +362,7 @@ function InvitationForm({ token }) {
 
         if (loginError) {
           throw new Error(
-            "This email already has a login. Enter its current password " +
-            "in both password fields, or reset it from the login page."
+            ui("This email already has a login. Enter its current password in both password fields, or reset it from the login page.")
           );
         }
 
@@ -385,7 +386,7 @@ function InvitationForm({ token }) {
 
       window.location.replace(redirect.toString());
     } catch (err) {
-      setError(err.message || "Unable to submit your invitation.");
+      setError(err.message || ui("Unable to submit your invitation."));
     } finally {
       running.current = false;
       setBusy(false);
@@ -395,14 +396,12 @@ function InvitationForm({ token }) {
   if (waiting) {
     return (
       <Card>
-        <h1>Check your email</h1>
+        <h1>{ui("Check your email")}</h1>
         <p role="status">
-          Click the confirmation link in your email. We will finish
-          your invitation and open login.
+          {ui("Click the confirmation link in your email. We will finish your invitation and open login.")}
         </p>
         <p>
-          Open the link in this same browser. You do not need to fill
-          in the form again.
+          {ui("Open the link in this same browser. You do not need to fill in the form again.")}
         </p>
       </Card>
     );
@@ -410,8 +409,8 @@ function InvitationForm({ token }) {
 
   return (
     <Card>
-      <h1>Join your building</h1>
-      <p>Complete this form once using the email invited by your Admin.</p>
+      <h1>{ui("Join your building")}</h1>
+      <p>{ui("Complete this form once using the email invited by your Admin.")}</p>
 
       {error && (
         <p className="form-error" role="alert" style={{ color: "#dc2626" }}>
@@ -421,7 +420,7 @@ function InvitationForm({ token }) {
 
       {!token && (
         <p className="form-error" role="alert">
-          Invitation missing. Open the invitation email link.
+          {ui("Invitation missing. Open the invitation email link.")}
         </p>
       )}
 
@@ -447,7 +446,7 @@ function InvitationForm({ token }) {
             width: "100%",
             }}      
             >
-              {label}
+              {ui(label)}
               <input
                 name={name}
                 type={type}
@@ -491,7 +490,7 @@ function InvitationForm({ token }) {
                 htmlFor="invitation-terms"
                 style={{ display: "inline" }}
               >
-                I accept the{" "}
+                {ui("I accept the")}{" "}
               </label>
               <button
                 type="button"
@@ -506,13 +505,13 @@ function InvitationForm({ token }) {
                   cursor: "pointer",
                 }}
               >
-                Terms and Conditions
+                {ui("Terms and Conditions")}
               </button>
             </span>
           </div>
 
           <button className="button" type="submit" disabled={busy}>
-            {busy ? "Please wait…" : "Accept invitation"}
+            {busy ? ui("Please wait…") : ui("Accept invitation")}
           </button>
         </fieldset>
       </form>

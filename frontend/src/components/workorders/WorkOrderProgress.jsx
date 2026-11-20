@@ -1,3 +1,4 @@
+import { useLanguage } from "../../i18n/LanguageContext";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../../lib/api";
@@ -5,7 +6,7 @@ import "../../styles/WorkOrderProgress.css";
 
 const BASE = "/api/work_order_comp_eme/api/work-orders";
 
-function getProgress(workOrder, records) {
+function getProgress(workOrder, records, ui, translateStatus) {
   const emergency = workOrder.type === "Emergency";
 
   const steps = emergency
@@ -37,7 +38,7 @@ function getProgress(workOrder, records) {
   let reached = 0;
   let notice = "";
   let known = true;
-  let statusLabel = status;
+  let statusLabel = translateStatus(status);
 
   switch (status) {
     case "Draft":
@@ -48,7 +49,7 @@ function getProgress(workOrder, records) {
       reached = emergency ? 2 : 0;
       known = emergency;
       notice = emergency
-        ? "Submit the emergency information to continue."
+        ? ui("Submit the emergency information to continue.")
         : "";
       break;
 
@@ -69,14 +70,14 @@ function getProgress(workOrder, records) {
 
     case "Authorized Work Order":
       reached = completionStart;
-      statusLabel = "Work in progress";
-      notice = "Submit the completion report when the work is finished.";
+      statusLabel = ui("Work in progress");
+      notice = ui("Submit the completion report when the work is finished.");
       break;
 
     case "Approved":
     case "Completed":
       reached = steps.length;
-      statusLabel = "Approved / Closed";
+      statusLabel = ui("Approved / Closed");
       break;
 
     default:
@@ -86,8 +87,8 @@ function getProgress(workOrder, records) {
   if (!known) {
     notice =
       emergency && /Pending .* Approval/.test(status)
-        ? `This emergency order is still in initial approval (${status}). Its saved state needs review against the updated emergency workflow.`
-        : `Status: ${status}. Progress mapping is not configured for this status.`;
+        ? ui("This emergency order is still in initial approval ({status}). Its saved state needs review against the updated emergency workflow.", { status: translateStatus(status) })
+        : ui("Status: {status}. Progress mapping is not configured for this status.", { status: translateStatus(status) });
   }
 
   if (status === "Authorized Work Order") {
@@ -99,48 +100,46 @@ function getProgress(workOrder, records) {
       switch (latest.status) {
         case "Pending President Approval":
           reached = completionStart + 1;
-          statusLabel = "Completed, awaiting President review";
-          notice = "The President must review the completion report next.";
+          statusLabel = ui("Completed, awaiting President review");
+          notice = ui("The President must review the completion report next.");
           break;
 
         case "Pending Treasurer Approval":
           reached = completionStart + 2;
-          statusLabel = "Completed, awaiting Treasurer review";
-          notice = "The Treasurer must review the completion report next.";
+          statusLabel = ui("Completed, awaiting Treasurer review");
+          notice = ui("The Treasurer must review the completion report next.");
           break;
 
         case "Pending Board Member Approval":
           reached = completionStart + 3;
-          statusLabel = "Completed, awaiting Board Member review";
-          notice = "A Board Member must review the completion report next.";
+          statusLabel = ui("Completed, awaiting Board Member review");
+          notice = ui("A Board Member must review the completion report next.");
           break;
 
         case "Approved":
           reached = steps.length - 1;
-          statusLabel = "Completion approved, awaiting closure";
+          statusLabel = ui("Completion approved, awaiting closure");
           notice =
-            "The completion report is approved, but the work order is still marked Authorized Work Order. Refresh to check its final status.";
+            ui("The completion report is approved, but the work order is still marked Authorized Work Order. Refresh to check its final status.");
           break;
 
         default:
           if (/reject/i.test(latest.status)) {
-            statusLabel = "Completion rejected — new report required";
+            statusLabel = ui("Completion rejected — new report required");
             notice =
-              `Completion report ${latest.completion_number} was rejected ` +
-              `(${latest.status}). A new completion report is required.`;
+              ui("Completion report {number} was rejected ({status}). A new completion report is required.", { number: latest.completion_number, status: translateStatus(latest.status) });
           } else {
             known = false;
-            statusLabel = latest.status;
+            statusLabel = translateStatus(latest.status);
             notice =
-              `Completion status: ${latest.status}. ` +
-              "Progress mapping is not configured for this status.";
+              ui("Completion status: {status}. Progress mapping is not configured for this status.", { status: translateStatus(latest.status) });
           }
       }
     }
   }
 
   return {
-    steps,
+    steps: steps.map(ui),
     completionStart,
     reached,
     known,
@@ -158,6 +157,7 @@ function ProgressDialog({
   onRetry,
   onClose,
 }) {
+  const { ui } = useLanguage();
   const dialogRef = useRef(null);
   const titleId = useId();
 
@@ -183,13 +183,13 @@ function ProgressDialog({
     {
       title:
         workOrder.type === "Emergency"
-          ? "Work order & emergency information"
-          : "Work order & initial approvals",
+          ? ui("Work order & emergency information")
+          : ui("Work order & initial approvals"),
       start: 0,
       end: progress.completionStart,
     },
     {
-      title: "Completion & final approvals",
+      title: ui("Completion & final approvals"),
       start: progress.completionStart,
       end: progress.steps.length,
     },
@@ -216,7 +216,7 @@ function ProgressDialog({
           className="wop-close"
           onClick={onClose}
         >
-          Close
+          {ui("Close")}
         </button>
       </div>
 
@@ -226,17 +226,17 @@ function ProgressDialog({
       </p>
 
       {loading ? (
-        <p role="status">Loading completion progress…</p>
+        <p role="status">{ui("Loading completion progress…")}</p>
       ) : error ? (
         <div role="alert">
-          <p>Unable to load completion progress: {error}</p>
+          <p>{ui("Unable to load completion progress:")} {error}</p>
 
           <button
             type="button"
             className="wop-close"
             onClick={onRetry}
           >
-            Retry
+            {ui("Retry")}
           </button>
         </div>
       ) : !progress.known ? (
@@ -246,7 +246,7 @@ function ProgressDialog({
           <div
             className="wop-track wop-track-large"
             role="progressbar"
-            aria-label="Workflow progress"
+            aria-label={ui("Workflow progress")}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={progress.percent}
@@ -255,7 +255,7 @@ function ProgressDialog({
           </div>
 
           <p className="wop-count">
-            {progress.reached} of {progress.steps.length} milestones reached
+            {ui("{reached} of {total} milestones reached", { reached: progress.reached, total: progress.steps.length })}
           </p>
 
           <div className="wop-phases">
@@ -294,9 +294,7 @@ function ProgressDialog({
 
           {workOrder.type === "Emergency" && (
             <p className="wop-note">
-              Emergency orders bypass initial approval after emergency
-              information is submitted. Completion requires President,
-              Treasurer, and Board Member approval.
+              {ui("Emergency orders bypass initial approval after emergency information is submitted. Completion requires President, Treasurer, and Board Member approval.")}
             </p>
           )}
 
@@ -313,6 +311,7 @@ function ProgressDialog({
 }
 
 export default function WorkOrderProgress({ workOrder }) {
+  const { ui, statusLabel } = useLanguage();
   const [open, setOpen] = useState(false);
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -345,7 +344,7 @@ export default function WorkOrderProgress({ workOrder }) {
 
         if (!Array.isArray(result)) {
           throw new Error(
-            "The backend returned an invalid completion list."
+            ui("The backend returned an invalid completion list.")
           );
         }
 
@@ -354,7 +353,7 @@ export default function WorkOrderProgress({ workOrder }) {
         }
       } catch (err) {
         if (active) {
-          setError(err.message || "Unable to load completion records.");
+          setError(err.message || ui("Unable to load completion records."));
         }
       } finally {
         if (active) {
@@ -371,16 +370,16 @@ export default function WorkOrderProgress({ workOrder }) {
     };
   }, [workOrder, retry]);
 
-  const progress = getProgress(workOrder, records);
+  const progress = getProgress(workOrder, records, ui, statusLabel);
   const unavailable = loading || Boolean(error) || !progress.known;
 
   const description = loading
-    ? "Loading progress"
+    ? ui("Loading progress")
     : error
-      ? "Completion progress unavailable"
+      ? ui("Completion progress unavailable")
       : !progress.known
         ? progress.notice
-        : `${progress.statusLabel}. ${progress.reached} of ${progress.steps.length} milestones reached`;
+        : `${progress.statusLabel}. ${ui("{reached} of {total} milestones reached", { reached: progress.reached, total: progress.steps.length })}`;
 
   return (
     <>

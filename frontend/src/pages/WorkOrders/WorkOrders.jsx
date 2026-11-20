@@ -59,6 +59,7 @@ export default function WorkOrders() {
 }
 
 function WorkOrdersPage({ user }) {
+  const { ui } = useLanguage();
   const { t, statusLabel } = useLanguage();
   const [workOrders, setWorkOrders] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -145,7 +146,7 @@ function WorkOrdersPage({ user }) {
     if (lock.current) return false;
 
     if (!suppliers.some((item) => item.supplier_id === payload.supplier_id)) {
-      setError("Select a supplier from the loaded list.");
+      setError(ui("Select a supplier from the loaded list."));
       return false;
     }
 
@@ -196,7 +197,7 @@ function WorkOrdersPage({ user }) {
       }
       return true;
     } catch (err) {
-      setError(err.message || "Unable to create work order.");
+      setError(err.message || ui("Unable to create work order."));
       return false;
     } finally {
       lock.current = false;
@@ -226,7 +227,7 @@ function WorkOrdersPage({ user }) {
 
       setMessage(`${saved.id}: ${saved.status}`);
     } catch (err) {
-      setError(err.message || "Unable to update work order.");
+      setError(err.message || ui("Unable to update work order."));
     } finally {
       lock.current = false;
       setBusy(false);
@@ -246,7 +247,7 @@ function WorkOrdersPage({ user }) {
       step.role !== user.role ||
       workOrder.createdBy === user.id
     ) {
-      setError("You cannot review this work order at its current step.");
+      setError(ui("You cannot review this work order at its current step."));
       return;
     }
 
@@ -301,7 +302,7 @@ function WorkOrdersPage({ user }) {
             disabled={busy || loading}
             onClick={() => setReload((value) => value + 1)}
           >
-            Refresh
+            {ui("Refresh")}
           </button>
         </div>
       </div>
@@ -314,12 +315,12 @@ function WorkOrdersPage({ user }) {
 
       {supplierError && (
         <p role="alert" style={{ color: "#b91c1c" }}>
-          Unable to load suppliers: {supplierError}
+          {ui("Unable to load suppliers:")} {supplierError}
         </p>
       )}
 
       {message && <p role="status">{message}</p>}
-      {loading && <p role="status">Loading work orders…</p>}
+      {loading && <p role="status">{ui("Loading work orders…")}</p>}
 
       {canCreate && showForm && (
         <Card>

@@ -1,3 +1,4 @@
+import { useLanguage } from "../../i18n/LanguageContext";
 import { useEffect, useRef, useState } from "react";
 import Card from "../../components/common/Card";
 import { useAuth } from "../../auth/AuthContext";
@@ -7,12 +8,26 @@ function getStatusClass(status) {
   return status.toLowerCase().replaceAll(" ", "-");
 }
 
+function formatFlagReason(reason, ui) {
+  const match = reason.match(
+    /^Possible split purchase\. Current PO: (.+?)\. Related POs: (.+?)\. Combined amount: MXN ([\d,.]+)\.$/
+  );
+  if (!match) return ui(reason);
+
+  return ui("Possible split purchase. Current PO: {current}. Related POs: {related}. Combined amount: MXN {amount}.", {
+    current: match[1],
+    related: match[2],
+    amount: match[3],
+  });
+}
+
 function POFlagCell({ order }) {
+  const { ui } = useLanguage();
   const dialogRef = useRef(null);
   const headingId = `po-flag-heading-${order.database_id}`;
 
   if (!order.flag_reason) {
-    return <span aria-label="No flag"></span>;
+    return <span aria-label={ui("No flag")}></span>;
   }
 
   return (
@@ -20,7 +35,7 @@ function POFlagCell({ order }) {
       <button
         type="button"
         className="table-action-button"
-        aria-label={`View flag reason for ${order.purchase_order_number}`}
+        aria-label={ui("View flag reason for {number}", { number: order.purchase_order_number })}
         onClick={() => dialogRef.current.showModal()}
       >
         <span aria-hidden="true">🚩</span>
@@ -38,13 +53,13 @@ function POFlagCell({ order }) {
         }}
       >
         <div className="wo-modal">
-          <h2 id={headingId}>Flagged purchase order</h2>
+          <h2 id={headingId}>{ui("Flagged purchase order")}</h2>
           <p><strong>{order.purchase_order_number}</strong></p>
-          <p>{order.flag_reason}</p>
+          <p>{formatFlagReason(order.flag_reason, ui)}</p>
 
           <form method="dialog">
             <button type="button" class="secondary-button" onClick={() => dialogRef.current.close()}>
-              Close
+              {ui("Close")}
             </button>
           </form>
         </div>
@@ -54,6 +69,7 @@ function POFlagCell({ order }) {
 }
 
 function PurchaseOrdersPage({ user }) {
+  const { ui, statusLabel, valueLabel } = useLanguage();
   const [orders, setOrders] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [workOrders, setWorkOrders] = useState([]);
@@ -115,7 +131,7 @@ function PurchaseOrdersPage({ user }) {
         setError(
           poResult.status === "rejected"
             ? poResult.reason.message
-            : "The backend returned an invalid purchase-order list."
+            : ui("The backend returned an invalid purchase-order list.")
         );
       }
 
@@ -126,7 +142,7 @@ function PurchaseOrdersPage({ user }) {
         setSuppliers(supplierResult.value);
       } else {
         setSuppliers([]);
-        lookupErrors.push("Unable to load suppliers. Click Refresh to retry.");
+        lookupErrors.push(ui("Unable to load suppliers. Click Refresh to retry."));
       }
 
       if (
@@ -137,7 +153,7 @@ function PurchaseOrdersPage({ user }) {
       } else {
         setWorkOrders([]);
         lookupErrors.push(
-          "Unable to load work orders. Click Refresh before linking one."
+          ui("Unable to load work orders. Click Refresh before linking one.")
         );
       }
 
@@ -220,7 +236,7 @@ function PurchaseOrdersPage({ user }) {
     }
 
     if (combinedFiles.length > 5) {
-      setAttachmentError("You can select a maximum of 5 files.");
+      setAttachmentError(ui("You can select a maximum of 5 files."));
       return;
     }
 
@@ -229,7 +245,7 @@ function PurchaseOrdersPage({ user }) {
         (file) => !/\.(pdf|jpe?g|png)$/i.test(file.name)
       )
     ) {
-      setAttachmentError("Only PDF, JPG, JPEG and PNG files are allowed.");
+      setAttachmentError(ui("Only PDF, JPG, JPEG and PNG files are allowed."));
       return;
     }
 
@@ -239,7 +255,7 @@ function PurchaseOrdersPage({ user }) {
       )
     ) {
       setAttachmentError(
-        "Files must not be empty and cannot exceed 10 MiB each."
+        ui("Files must not be empty and cannot exceed 10 MiB each.")
       );
       return;
     }
@@ -250,7 +266,7 @@ function PurchaseOrdersPage({ user }) {
     );
 
     if (totalSize > 25 * 1024 * 1024) {
-      setAttachmentError("The selected files cannot exceed 25 MiB combined.");
+      setAttachmentError(ui("The selected files cannot exceed 25 MiB combined."));
       return;
     }
 
@@ -264,7 +280,7 @@ function PurchaseOrdersPage({ user }) {
     setMessage("");
 
     if (!form.title.trim() || !form.description.trim()) {
-      setError("Enter a title and description.");
+      setError(ui("Enter a title and description."));
       return;
     }
 
@@ -273,7 +289,7 @@ function PurchaseOrdersPage({ user }) {
         (supplier) => supplier.supplier_id === form.supplier_id
       )
     ) {eligibleWorkOrders
-      setError("Select an approved supplier.");
+      setError(ui("Select an approved supplier."));
       return;
     }
 
@@ -283,7 +299,7 @@ function PurchaseOrdersPage({ user }) {
         (order) => order.work_order_number === form.work_order_number
       )
     ) {
-      setError("Select an eligible work order or choose No work order.");
+      setError(ui("Select an eligible work order or choose No work order."));
       return;
     }
 
@@ -291,7 +307,7 @@ function PurchaseOrdersPage({ user }) {
       !/^\d{1,10}(\.\d{1,2})?$/.test(form.amount) ||
       Number(form.amount) <= 0
     ) {
-      setError("Enter a positive amount with no more than two decimals.");
+      setError(ui("Enter a positive amount with no more than two decimals."));
       return;
     }
 
@@ -323,10 +339,10 @@ function PurchaseOrdersPage({ user }) {
       setSelectedFiles([]);
 
       if (filesToUpload.length === 0) {
-        setMessage(`${saved.purchase_order_number} saved as Draft.`);
+        setMessage(ui("{number} saved as Draft.", { number: saved.purchase_order_number }));
       } else {
         setMessage(
-          `${saved.purchase_order_number} saved as Draft. Uploading attachments…`
+          ui("{number} saved as Draft. Uploading attachments…", { number: saved.purchase_order_number })
         );
 
         const uploadData = new FormData();
@@ -348,7 +364,7 @@ function PurchaseOrdersPage({ user }) {
 
           // This endpoint can return HTTP 200 even when individual files fail.
           if (!Array.isArray(uploadResult.results)) {
-            throw new Error("Unexpected attachment upload response.");
+            throw new Error(ui("Unexpected attachment upload response."));
           }
 
           const failedFiles = uploadResult.results.filter(
@@ -356,9 +372,11 @@ function PurchaseOrdersPage({ user }) {
           );
 
           setMessage(
-            `${saved.purchase_order_number} saved as Draft. ` +
-            `${uploadResult.uploaded_count} attachment(s) uploaded; ` +
-            `${uploadResult.failed_count} failed.`
+            ui("{number} saved as Draft. {uploaded} attachment(s) uploaded; {failed} failed.", {
+              number: saved.purchase_order_number,
+              uploaded: uploadResult.uploaded_count,
+              failed: uploadResult.failed_count,
+            })
           );
 
           if (failedFiles.length > 0) {
@@ -367,26 +385,26 @@ function PurchaseOrdersPage({ user }) {
                 .map(
                   (result) =>
                     `${result.original_filename}: ${
-                      result.error || "Upload failed."
+                      result.error || ui("Upload failed.")
                     }`
                 )
-                .join(" ") +
-              ` The PO already exists as ${saved.purchase_order_number}. ` +
-              "Check its saved attachments before retrying. Do not create another PO."
+                .join(" ") + " " +
+              ui("The PO already exists as {number}.", { number: saved.purchase_order_number }) + " " +
+              ui("Check its saved attachments before retrying. Do not create another PO.")
             );
           }
         } catch (uploadError) {
-          setMessage(`${saved.purchase_order_number} saved as Draft.`);
+          setMessage(ui("{number} saved as Draft.", { number: saved.purchase_order_number }));
 
           setError(
-            `Could not confirm all attachment uploads: ${uploadError.message} ` +
-            `The PO already exists as ${saved.purchase_order_number}. ` +
-            "Check its saved attachments before retrying. Do not create another PO."
+            ui("Could not confirm all attachment uploads: {error}", { error: uploadError.message }) + " " +
+            ui("The PO already exists as {number}.", { number: saved.purchase_order_number }) + " " +
+            ui("Check its saved attachments before retrying. Do not create another PO.")
           );
         }
       }
     } catch (err){
-      setError(err.message || "Unable to create purchase order.");
+      setError(err.message || ui("Unable to create purchase order."));
     } finally{
       lock.current = false;
       setBusy(false);
@@ -399,12 +417,12 @@ function PurchaseOrdersPage({ user }) {
     let payload;
 
     if (action === "reject") {
-      const comment = window.prompt("Enter the rejection reason:");
+      const comment = window.prompt(ui("Enter the rejection reason:"));
 
       if (comment === null) return;
 
       if (!comment.trim()) {
-        setError("A rejection reason is required.");
+        setError(ui("A rejection reason is required."));
         return;
       }
 
@@ -431,9 +449,9 @@ function PurchaseOrdersPage({ user }) {
         )
       );
 
-      setMessage(`${saved.purchase_order_number}: ${saved.status}`);
+      setMessage(`${saved.purchase_order_number}: ${statusLabel(saved.status)}`);
     } catch (err) {
-      setError(err.message || "Unable to update purchase order.");
+      setError(err.message || ui("Unable to update purchase order."));
     } finally {
       lock.current = false;
       setBusy(false);
@@ -450,22 +468,22 @@ function PurchaseOrdersPage({ user }) {
         current.filter((item) => item.purchase_order_number !== orderNumber)
       );
 
-      setMessage(`${orderNumber}: draft deleted.`);
+      setMessage(ui("{number}: draft deleted.", { number: orderNumber }));
       return;
     }
   }
 
   if (!canView) {
-    return <p>Your role does not have access to purchase orders.</p>;
+    return <p>{ui("Your role does not have access to purchase orders.")}</p>;
   }
 
   return (
     <div className="page-container">
       <div className="page-header">
         <div>
-          <h1>Purchase Orders</h1>
+          <h1>{ui("Purchase Orders")}</h1>
           <p className="page-subtitle">
-            Create purchase requests and track their approvals.
+            {ui("Create purchase requests and track their approvals.")}
           </p>
         </div>
 
@@ -475,7 +493,7 @@ function PurchaseOrdersPage({ user }) {
           disabled={loading || busy}
           onClick={() => setReload((value) => value + 1)}
         >
-          Refresh
+          {ui("Refresh")}
         </button>
       </div>
 
@@ -487,12 +505,12 @@ function PurchaseOrdersPage({ user }) {
 
       {lookupError && <p role="alert">{lookupError}</p>}
       {message && <p role="status">{message}</p>}
-      {loading && <p role="status">Loading purchase orders…</p>}
+      {loading && <p role="status">{ui("Loading purchase orders…")}</p>}
 
       {canCreate && (
         <Card>
           <div className="panel-title">
-            <h2>Create purchase order</h2>
+            <h2>{ui("Create purchase order")}</h2>
           </div>
 
           <form onSubmit={createOrder}>
@@ -502,7 +520,7 @@ function PurchaseOrdersPage({ user }) {
             >
               <div className="form-grid">
                 <div className="form-group">
-                  <label htmlFor="po-title">Title*</label>
+                  <label htmlFor="po-title">{ui("Title*")}</label>
                   <input
                     id="po-title"
                     name="title"
@@ -514,7 +532,7 @@ function PurchaseOrdersPage({ user }) {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="po-supplier">Supplier*</label>
+                  <label htmlFor="po-supplier">{ui("Supplier*")}</label>
                   <select
                     id="po-supplier"
                     name="supplier_id"
@@ -522,7 +540,7 @@ function PurchaseOrdersPage({ user }) {
                     onChange={changeForm}
                     required
                   >
-                    <option value="">Select an approved supplier</option>
+                    <option value="">{ui("Select an approved supplier")}</option>
                     {approvedSuppliers.map((supplier) => (
                       <option
                         key={supplier.database_id}
@@ -535,14 +553,14 @@ function PurchaseOrdersPage({ user }) {
 
                   {!loading && approvedSuppliers.length === 0 && (
                     <small>
-                      An approved supplier is required to create a PO.
+                      {ui("An approved supplier is required to create a PO.")}
                     </small>
                   )}
                 </div>
 
                 <div className="form-group">
                   <label htmlFor="po-work-order">
-                    Work order — optional
+                    {ui("Work order — optional")}
                   </label>
                   <select
                     id="po-work-order"
@@ -550,7 +568,7 @@ function PurchaseOrdersPage({ user }) {
                     value={form.work_order_number}
                     onChange={changeForm}
                   >
-                    <option value="">No work order</option>
+                    <option value="">{ui("No work order")}</option>
                     {eligibleWorkOrders.map((order) => (
                       <option
                         key={order.database_id}
@@ -560,11 +578,11 @@ function PurchaseOrdersPage({ user }) {
                       </option>
                     ))}
                   </select>
-                  <small>Only eligible approved work orders are listed.</small>
+                  <small>{ui("Only eligible approved work orders are listed.")}</small>
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="po-amount">Amount — MXN*</label>
+                  <label htmlFor="po-amount">{ui("Amount — MXN*")}</label>
                   <input
                     id="po-amount"
                     name="amount"
@@ -579,7 +597,7 @@ function PurchaseOrdersPage({ user }) {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="po-priority">Priority*</label>
+                  <label htmlFor="po-priority">{ui("Priority*")}</label>
                   <select
                     id="po-priority"
                     name="priority"
@@ -588,14 +606,14 @@ function PurchaseOrdersPage({ user }) {
                   >
                     {["Low", "Medium", "High"].map((priority) => (
                       <option key={priority} value={priority}>
-                        {priority}
+                        {valueLabel("priority", priority)}
                       </option>
                     ))}
                   </select>
                 </div>
                 
                 <div className="form-group form-wide">
-                  <label htmlFor="po-description">Description*</label>
+                  <label htmlFor="po-description">{ui("Description*")}</label>
                   <textarea
                     id="po-description"
                     name="description"
@@ -607,8 +625,8 @@ function PurchaseOrdersPage({ user }) {
                 </div>
                 
                 <div className="attachment-box form-wide">
-                  <strong>Attachments</strong>
-                  <p>Select an invoice or supporting documents.</p>
+                  <strong>{ui("Attachments")}</strong>
+                  <p>{ui("Select an invoice or supporting documents.")}</p>
 
                   <input
                     ref={attachmentInputRef}
@@ -623,13 +641,12 @@ function PurchaseOrdersPage({ user }) {
                     type="button"
                     onClick={() => attachmentInputRef.current?.click()}
                   >
-                    Browse files
+                    {ui("Browse files")}
                   </button>
 
                   <p>
                     <small>
-                      Maximum 5 files, 10 MiB per file and 25 MiB combined.
-                      Browsing again to add more files.
+                      {ui("Maximum 5 files, 10 MiB per file and 25 MiB combined. Browsing again to add more files.")}
                     </small>
                   </p>
 
@@ -669,7 +686,7 @@ function PurchaseOrdersPage({ user }) {
                     className="primary-action-button"
                     disabled={approvedSuppliers.length === 0}
                   >
-                    {busy ? "Saving…" : "Create draft"}
+                    {busy ? ui("Saving…") : ui("Create draft")}
                   </button>
                 </div>
               </div>
@@ -682,21 +699,21 @@ function PurchaseOrdersPage({ user }) {
         <div className="panel-title">
           <div className="table-tools">
             <input
-              aria-label="Search purchase orders"
-              placeholder="Search number, title, or supplier…"
+              aria-label={ui("Search purchase orders")}
+              placeholder={ui("Search number, title, or supplier…")}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
 
             <select
-              aria-label="Filter by status"
+              aria-label={ui("Filter by status")}
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
             >
-              <option value="All">All statuses</option>
+              <option value="All">{ui("All statuses")}</option>
               {statuses.map((status) => (
                 <option key={status} value={status}>
-                  {status}
+                  {statusLabel(status)}
                 </option>
               ))}
             </select>
@@ -707,15 +724,15 @@ function PurchaseOrdersPage({ user }) {
           <table className="data-table">
             <thead>
               <tr>
-                <th>PO number</th> 
-                <th>Title / description</th>
-                <th>Supplier</th>
-                <th>Work order</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Attachments</th>
-                <th>Flag Reason</th>
-                <th>Actions</th>
+                <th>{ui("PO number")}</th>
+                <th>{ui("Title / description")}</th>
+                <th>{ui("Supplier")}</th>
+                <th>{ui("Work order")}</th>
+                <th>{ui("Amount")}</th>
+                <th>{ui("Status")}</th>
+                <th>{ui("Attachments")}</th>
+                <th>{ui("Flag Reason")}</th>
+                <th>{ui("Actions")}</th>
               </tr>
             </thead>
 
@@ -732,7 +749,7 @@ function PurchaseOrdersPage({ user }) {
                     <td>
                       <strong>{order.title}</strong>
                       <details>
-                        <summary>View description</summary>
+                        <summary>{ui("View description")}</summary>
                         <p style={{ whiteSpace: "pre-wrap" }}>
                           {order.description}
                         </p>
@@ -747,8 +764,8 @@ function PurchaseOrdersPage({ user }) {
                     <td>
                       <span className= {`status-badge status-${getStatusClass(order.status)}`}>
                       {order.status?.toLowerCase().startsWith("reject")
-                        ? "Rejected"  
-                        : order.status}
+                        ? ui("Rejected")
+                        : statusLabel(order.status)}
                       </span>
                     </td>
 
@@ -771,7 +788,7 @@ function PurchaseOrdersPage({ user }) {
                             disabled={busy || loading}
                             onClick={() => performAction(order, "submit")}
                           >
-                            Submit
+                            {ui("Submit")}
                           </button>
                         )}
                           
@@ -782,12 +799,12 @@ function PurchaseOrdersPage({ user }) {
                               className="table-action-button"
                               disabled={busy || loading}
                               onClick={() => {
-                                if (window.confirm("Delete this draft purchase order?")) {
+                                if (window.confirm(ui("Delete this draft purchase order?"))) {
                                   performAction(order, "delete");
                                 }
                               }}
                             >
-                              Delete draft
+                              {ui("Delete draft")}
                             </button>
                           )}
                           
@@ -801,7 +818,7 @@ function PurchaseOrdersPage({ user }) {
                                 performAction(order, step.action)
                               }
                             >
-                              Approve
+                              {ui("Approve")}
                             </button>
                             
                         
@@ -812,7 +829,7 @@ function PurchaseOrdersPage({ user }) {
                               disabled={busy || loading}
                               onClick={() => performAction(order, "reject")}
                             >
-                              Reject
+                              {ui("Reject")}
                             </button>
                           </>
                         )}
@@ -824,7 +841,7 @@ function PurchaseOrdersPage({ user }) {
 
               {!loading && filteredOrders.length === 0 && (
                 <tr>
-                  <td colSpan={8}>No purchase orders found.</td>
+                  <td colSpan={8}>{ui("No purchase orders found.")}</td>
                 </tr>
               )}
             </tbody>
@@ -835,6 +852,7 @@ function PurchaseOrdersPage({ user }) {
   );
   
   function POAttachmentsCell({ purchaseOrderNumber, userRole, refreshKey }) {
+  const { ui } = useLanguage();
   const [attachments, setAttachments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
@@ -871,7 +889,7 @@ function PurchaseOrdersPage({ user }) {
     api(attachmentsUrl, { signal: controller.signal })
       .then((result) => {
         if (!Array.isArray(result)) {
-          throw new Error("Invalid attachment list.");
+          throw new Error(ui("Invalid attachment list."));
         }
 
         if (active) setAttachments(result);
@@ -879,7 +897,7 @@ function PurchaseOrdersPage({ user }) {
       .catch((err) => {
         if (active) {
           setAttachments([]);
-          setError(err.message || "Unable to load attachments.");
+          setError(err.message || ui("Unable to load attachments."));
         }
       })
       .finally(() => {
@@ -907,15 +925,15 @@ function PurchaseOrdersPage({ user }) {
         attachment.original_filename
       );
     } catch (err) {
-      setError(err.message || "Unable to download attachment.");
+      setError(err.message || ui("Unable to download attachment."));
     } finally {
       downloadLock.current = false;
       setDownloading(null);
     }
   }
 
-  if (!canRead) return <span>Not permitted</span>;
-  if (loading) return <span>Loading…</span>;
+  if (!canRead) return <span>{ui("Not permitted")}</span>;
+  if (loading) return <span>{ui("Loading…")}</span>;
 
   return (
     <div>
@@ -928,7 +946,7 @@ function PurchaseOrdersPage({ user }) {
             type="button"
             onClick={() => setRetry((value) => value + 1)}
           >
-            Refresh attachments
+            {ui("Refresh attachments")}
           </button>
         </div>
       )}
@@ -958,8 +976,8 @@ function PurchaseOrdersPage({ user }) {
                     onClick={() => downloadAttachment(attachment)}
                   >
                     {downloading === attachment.attachment_number
-                      ? "Downloading…"
-                      : "Download"}
+                      ? ui("Downloading…")
+                      : ui("Download")}
                   </button>
                 </li>
               ))}
