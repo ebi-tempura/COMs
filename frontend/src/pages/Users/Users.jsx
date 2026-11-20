@@ -103,19 +103,21 @@ export default function Users() {
 
           <label className="role-field" htmlFor="user-role">
             <span>{ui("Role")}</span>
-
-            <select
-              id="user-role"
-              value={role}
-              disabled={busy}
-              onChange={(event) => setRole(event.target.value)}
-            >
-              {roles.map((item) => (
-                <option key={item} value={item}>
-                  {roleLabel(item)}
-                </option>
-              ))}
+            <div className="table-tools">
+              <select
+                id="user-role"
+                type="search"
+                value={role}
+                disabled={busy}
+                onChange={(event) => setRole(event.target.value)}
+              >
+                {roles.map((item) => (
+                  <option key={item} value={item}>
+                    {roleLabel(item)}
+                  </option>
+                ))}
             </select>
+            </div>
 </label>
 
         <button type="submit" disabled={busy}>
@@ -141,6 +143,7 @@ export default function Users() {
 
           <select
             aria-label={ui("Filter by status")}
+            type="search"
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
           >
@@ -170,10 +173,16 @@ export default function Users() {
           <tbody>{users.map(u => <tr key={u.database_id}>
             <td>{u.first_name} {u.last_name}</td>
             <td>{u.email}</td>
-            <td>{admin ? <select aria-label={ui("Role for {email}", { email: u.email })} value={u.user_role} disabled={busy}
+            <td>
+              <div className="table-tools">
+              
+              {admin ? <select aria-label={ui("Role for {email}", { email: u.email })} value={u.user_role} disabled={busy}
               onChange={e => perform(() => api(`/api/users/${u.database_id}/role`, { method: 'PATCH', body: JSON.stringify({ user_role: e.target.value }) }))}>
               {roles.map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
-            </select> : roleLabel(u.user_role)}</td>
+            </select> : roleLabel(u.user_role)}
+              </div>
+            
+            </td>
             <td>
               <span
                 className="status-badge-users"
