@@ -28,6 +28,7 @@ export default function WorkOrderForm({
   onCreateWorkOrder,
   onCancel,
 }) {
+  const { ui } = useLanguage();
   const { t, valueLabel } = useLanguage();
   const [formData, setFormData] = useState({ ...initialForm });
   const [saving, setSaving] = useState(false);
@@ -64,7 +65,7 @@ export default function WorkOrderForm({
     }
     
     if (!payload.title || !payload.location || !payload.description) {
-      setError("Enter a title, location, and description.");
+      setError(ui("Enter a title, location, and description."));
       return;
     }
 
@@ -72,7 +73,7 @@ export default function WorkOrderForm({
       !Number.isFinite(Number(payload.amount)) ||
       Number(payload.amount) <= 0
     ) {
-      setError("The amount must be greater than zero.");
+      setError(ui("The amount must be greater than zero."));
       return;
     } 
 
@@ -84,7 +85,7 @@ export default function WorkOrderForm({
       files.some((file) => file.size > 10 * megabyte) ||
       totalSize > 25 * megabyte
     ) {
-      setError("Select up to 5 files, 10 MB each and 25 MB total.");
+      setError(ui("Select up to 5 files, 10 MB each and 25 MB total."));
       return;
     }
 
@@ -95,7 +96,7 @@ export default function WorkOrderForm({
       const saved = await onCreateWorkOrder(payload, files);
       if (saved) setFormData({ ...initialForm }); setFiles([]);
     } catch (err) {
-      setError(err.message || "Unable to save work order.");
+      setError(err.message || ui("Unable to save work order."));
     } finally {
       lock.current = false;
       setSaving(false);
@@ -118,7 +119,7 @@ export default function WorkOrderForm({
       nextFiles.some((file) => file.size > 10 * mib) ||
       totalBytes > 25 * mib
     ) {
-      setAttachmentError("Select up to 5 files, 10 MiB each and 25 MiB combined.");
+      setAttachmentError(ui("Select up to 5 files, 10 MiB each and 25 MiB combined."));
       return;
     }
 
@@ -173,7 +174,7 @@ export default function WorkOrderForm({
             </select>
 
             {!disabled && suppliers.length === 0 && (
-              <small>Create a supplier before creating a work order.</small>
+              <small>{ui("Create a supplier before creating a work order.")}</small>
             )}
           </div>
 
@@ -295,8 +296,8 @@ export default function WorkOrderForm({
           </div>
           
           <div className="attachment-box form-wide">
-                    <strong>Attachments</strong>
-                    <p>Select an invoice or supporting documents.</p>
+                    <strong>{ui("Attachments")}</strong>
+                    <p>{ui("Select an invoice or supporting documents.")}</p>
 
                     <input
                       ref={attachmentInputRef}
@@ -311,13 +312,12 @@ export default function WorkOrderForm({
                       type="button"
                       onClick={() => attachmentInputRef.current?.click()}
                     >
-                      Browse files
+                      {ui("Browse files")}
                     </button>
 
                     <p>
                       <small>
-                        Maximum 5 files, 10 MiB per file and 25 MiB combined.
-                        Browsing again to add more files.
+                        {ui("Maximum 5 files, 10 MiB per file and 25 MiB combined. Browsing again to add more files.")}
                       </small>
                     </p>
 
@@ -357,7 +357,7 @@ export default function WorkOrderForm({
               className="primary-action-button"
               disabled={suppliers.length === 0}
             >
-              {saving ? "Saving…" : t("workOrderForm.create")}
+              {saving ? ui("Saving…") : t("workOrderForm.create")}
             </button>
 
             {onCancel && (
@@ -366,7 +366,7 @@ export default function WorkOrderForm({
                 className="secondary-button"
                 onClick={onCancel}
               >
-                Close form
+                {ui("Close form")}
               </button>
             )}
           </div>

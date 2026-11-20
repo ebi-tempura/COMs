@@ -1,3 +1,5 @@
+import { spanishUiCopy } from "./uiCopy.es-MX.js";
+
 export const LANGUAGES = Object.freeze({
   ENGLISH: "en",
   SPANISH_MX: "es-MX",
@@ -267,6 +269,7 @@ const spanishMexico = {
     dashboard: "Panel",
     workOrders: "Órdenes de trabajo",
     suppliers: "Proveedores",
+    purchaseOrders: "Órdenes de compra",
     residents: "Residentes",
     reports: "Reportes",
     documents: "Documentos",
@@ -283,6 +286,7 @@ const spanishMexico = {
     rememberMe: "Recordarme",
     forgotPassword: "¿Olvidaste tu contraseña?",
     signIn: "Iniciar sesión",
+    signUp: "Crear cuenta",
   },
   roleSwitcher: { testingAs: "Probando como" },
   placeholders: {
@@ -363,6 +367,43 @@ const spanishMexico = {
     workPerformed: "Trabajo realizado",
     observations: "Observaciones",
     auditTrail: "Historial de auditoría",
+  },
+  workOrderEmergency: {
+    what: "¿Qué pasó?*",
+    where: "¿Dónde ocurrió?*",
+    who: "¿Quién detectó el problema?*",
+    when: "¿Cuándo ocurrió?*",
+    why: "¿Por qué ocurrió?*",
+    how: "¿Cómo ocurrió?*",
+    howmuch: "¿Cuánto costó?*",
+    descriptionPlaceholderWhat: "Describe lo que pasó.",
+    descriptionPlaceholderWhere: "¿Dónde se encuentra exactamente el problema?",
+    descriptionPlaceholderWho: "¿A quién afecta, quién lo reportó y quién debe atenderlo?",
+    descriptionPlaceholderWhen: "¿Cuándo comenzó y cuándo se reportó?",
+    descriptionPlaceholderWhy: "¿Por qué requiere atención inmediata fuera del horario habitual?",
+    descriptionPlaceholderHow: "¿Cómo se está controlando la emergencia y cómo se resolverá?",
+    descriptionPlaceholderHowmany: "¿Qué daños hubo y cuánto costará la reparación de emergencia?",
+  },
+  completionHistory: {
+    title: "Historial de informes de conclusión",
+    version: "Versión",
+    submittedBy: "Enviado por",
+    role: "Rol",
+    submittedAt: "Fecha de envío",
+    completionDate: "Fecha de conclusión",
+    workPerformed: "Trabajo realizado",
+    observations: "Observaciones",
+    rejection: "Rechazo",
+    reason: "Motivo",
+    rejectedBy: "Rechazado por",
+    rejectedAt: "Fecha de rechazo",
+    approvals: "Aprobaciones",
+    step: "Etapa",
+    noObservations: "Sin observaciones",
+  },
+  register: {
+    buildingName: "Nombre del edificio",
+    buildingNamePlaceholder: "Ej. Torre A",
   },
   audit: {
     empty: "No se han registrado eventos de auditoría.",
@@ -467,6 +508,11 @@ const spanishMexico = {
     Completed: "Completada",
     Active: "Activo",
     Pending: "Pendiente",
+    Accepted: "Aceptada",
+    Revoked: "Revocada",
+    Expired: "Vencida",
+    "Needs Emergency Information": "Pendiente de datos de la emergencia",
+    "Authorized Work Order": "Orden de trabajo autorizada",
   },
   roleLabels: {
     "Super Admin": "Superadministrador",
@@ -676,4 +722,12 @@ export function translateWorkflowMessage(language, message) {
 
 export function getLocale(language) {
   return language === LANGUAGES.SPANISH_MX ? "es-MX" : "en-US";
+}
+
+export function translateUiCopy(language, message, variables) {
+  const translated = language === LANGUAGES.SPANISH_MX
+    && Object.hasOwn(spanishUiCopy, message)
+    ? spanishUiCopy[message]
+    : message;
+  return interpolate(translated, variables);
 }

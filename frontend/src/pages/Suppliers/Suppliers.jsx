@@ -45,6 +45,7 @@ function mapSupplier(record) {
 }
 
 function Suppliers() {
+  const { ui } = useLanguage();
   function handleSubmitSupplier (supplierId){
     return runSupplierAction(supplierId,"submit");
   }
@@ -79,7 +80,7 @@ function Suppliers() {
         });
 
         if (!Array.isArray(records)) {
-          throw new Error("The backend returned an invalid supplier list.");
+          throw new Error(ui("The backend returned an invalid supplier list."));
         }
 
         if (active) {
@@ -87,7 +88,7 @@ function Suppliers() {
         }
       } catch (err) {
         if (active) {
-          setError(err.message || "Unable to load suppliers.");
+          setError(err.message || ui("Unable to load suppliers."));
         }
       } finally {
         if (active) setLoading(false);
@@ -149,15 +150,15 @@ function Suppliers() {
     ];
 
     if (requiredFields.some((field) => !payload[field])) {
-      throw new Error("Complete every supplier field except Notes.");
+      throw new Error(ui("Complete every supplier field except Notes."));
     }
 
     if (payload.rfc.length < 12 || payload.rfc.length > 13) {
-      throw new Error("RFC must contain 12 or 13 characters.");
+      throw new Error(ui("RFC must contain 12 or 13 characters."));
     }
 
     if (!/^\d{18}$/.test(payload.clabe)) {
-      throw new Error("CLABE must contain exactly 18 digits.");
+      throw new Error(ui("CLABE must contain exactly 18 digits."));
     }
 
     const record = await api(SUPPLIERS_URL, {
@@ -168,7 +169,7 @@ function Suppliers() {
     setSupplierList((current) => [mapSupplier(record), ...current]);
     return true;
   } catch (err) {
-    setError(err.message || "Unable to create supplier.");
+    setError(err.message || ui("Unable to create supplier."));
     return false;
   } finally {
     operationLock.current = false;
@@ -197,7 +198,7 @@ async function runSupplierAction(supplierId, action) {
       )
     );
   } catch (err) {
-    setError(err.message || "Unable to update supplier.");
+    setError(err.message || ui("Unable to update supplier."));
   } finally {
     operationLock.current = false;
     setBusy(false);
@@ -213,7 +214,7 @@ function handleApproveSupplier(supplierId) {
   const step = APPROVAL_STEPS[supplier?.status];
 
   if (!step || step.role !== user?.role) {
-    setError("This supplier is not awaiting approval from your role.");
+    setError(ui("This supplier is not awaiting approval from your role."));
     return;
   }
 
@@ -225,7 +226,7 @@ function handleRejectSupplier(supplierId) {
   const step = APPROVAL_STEPS[supplier?.status];
 
   if (!step || step.role !== user?.role) {
-    setError("This supplier is not awaiting review from your role.");
+    setError(ui("This supplier is not awaiting review from your role."));
     return;
   }
 
@@ -236,7 +237,7 @@ function handleRejectSupplier(supplierId) {
 }
 
 function showUnavailableAction() {
-  setError("This action does not have a backend endpoint yet.");
+  setError(ui("This action does not have a backend endpoint yet."));
 }
 
 function handleEditSupplier() {
@@ -341,7 +342,7 @@ function handleResubmitSupplier() {
         </p>
         )}
 
-        {loading && <p role="status">Loading suppliers…</p>}
+        {loading && <p role="status">{ui("Loading suppliers…")}</p>}
 
     </div>
   );

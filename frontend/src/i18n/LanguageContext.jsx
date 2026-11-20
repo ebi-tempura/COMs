@@ -13,6 +13,7 @@ import {
   translateGroupedValue,
   translateMapValue,
   translateWorkflowMessage,
+  translateUiCopy,
 } from "./translations";
 
 const STORAGE_KEY = "comsLanguage";
@@ -44,6 +45,11 @@ export function LanguageProvider({ children }) {
 
   const t = useCallback(
     (key, variables) => translate(language, key, variables),
+    [language]
+  );
+
+  const ui = useCallback(
+    (message, variables) => translateUiCopy(language, message, variables),
     [language]
   );
 
@@ -161,6 +167,7 @@ export function LanguageProvider({ children }) {
       locale,
       setLanguage,
       t,
+      ui,
       statusLabel,
       roleLabel,
       actionLabel,
@@ -183,6 +190,7 @@ export function LanguageProvider({ children }) {
       roleLabel,
       statusLabel,
       t,
+      ui,
       userName,
       valueLabel,
       workflowMessage,

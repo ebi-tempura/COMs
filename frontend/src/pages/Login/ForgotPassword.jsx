@@ -1,8 +1,10 @@
+import { useLanguage } from "../../i18n/LanguageContext";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function ForgotPassword() {
+  const { ui } = useLanguage();
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -29,7 +31,7 @@ export default function ForgotPassword() {
       if (error) throw error;
       setSent(true);
     } catch (err) {
-      setError(err.message || "Unable to send the reset email.");
+      setError(err.message || ui("Unable to send the reset email."));
     } finally {
       setBusy(false);
     }
@@ -42,13 +44,12 @@ export default function ForgotPassword() {
           <img src="/Logo-blue.png" alt="PAX Aurora" />
         </div>
 
-        <h1>Reset your password</h1>
-        <p>Enter the email address you use for COMS.</p>
+        <h1>{ui("Reset your password")}</h1>
+        <p>{ui("Enter the email address you use for COMS.")}</p>
 
         {sent ? (
           <p role="status">
-            If an account exists for this email, you will receive a
-            password-reset link. Please check your inbox and spam folder.
+            {ui("If an account exists for this email, you will receive a password-reset link. Please check your inbox and spam folder.")}
           </p>
         ) : (
           <form className="login-form" onSubmit={handleSubmit}>
@@ -59,7 +60,7 @@ export default function ForgotPassword() {
             )}
 
             <label>
-              Email
+              {ui("Email")}
               <input
                 type="email"
                 autoComplete="email"
@@ -70,10 +71,10 @@ export default function ForgotPassword() {
             </label>
 
             <button className="button" type="submit" disabled={busy}>
-              {busy ? "Sending…" : "Send reset link"}
+              {busy ? ui("Sending…") : ui("Send reset link")}
             </button>
             <p>
-              <Link to="/login">Back to login</Link>
+              <Link to="/login">{ui("Back to login")}</Link>
             </p>
           </form>
         )}

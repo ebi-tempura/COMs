@@ -4,6 +4,7 @@ import { useLanguage } from "../i18n/LanguageContext";
 import {useState} from "react";
 
 function AppLayout() {
+  const { ui } = useLanguage();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [logoutError, setLogoutError] = useState("");
@@ -18,7 +19,7 @@ async function handleLogout() {
     await signOut();
     navigate("/login", { replace: true  });
   } catch (err) {
-    setLogoutError(err.message || "Unable to sign out.");
+    setLogoutError(err.message || ui("Unable to sign out."));
   } finally {
     setLoggingOut(false);
   }
@@ -43,7 +44,7 @@ async function handleLogout() {
           <NavLink to="/purchase-orders">{t("nav.purchaseOrders")}</NavLink>
           <NavLink to="/reports">{t("nav.reports")}</NavLink>
           <NavLink to="/documents">{t("nav.documents")}</NavLink>
-          <NavLink to="/users">Users</NavLink>
+          <NavLink to="/users">{ui("Users")}</NavLink>
         </nav>
         <div className="sidebar-user">
         <div className="user-info">

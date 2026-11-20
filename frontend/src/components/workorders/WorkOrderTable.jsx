@@ -14,6 +14,7 @@ const APPROVER_BY_STATUS = {
 };
 
 function WorkOrderStatusBadge({ workOrder, refreshKey }) {
+  const { ui } = useLanguage();
   const { statusLabel } = useLanguage();
   const [completionState, setCompletionState] = useState(null);
   const [retry, setRetry] = useState(0);
@@ -42,7 +43,7 @@ function WorkOrderStatusBadge({ workOrder, refreshKey }) {
         );
 
         if (!Array.isArray(records)) {
-          throw new Error("Invalid completion report list.");
+          throw new Error(ui("Invalid completion report list."));
         }
 
         const latest = [...records].sort(
@@ -61,7 +62,7 @@ function WorkOrderStatusBadge({ workOrder, refreshKey }) {
           setCompletionState({
             workOrder,
             latest: null,
-            error: error.message || "Unable to load completion status.",
+            error: error.message || ui("Unable to load completion status."),
           });
         }
       }
@@ -83,12 +84,12 @@ function WorkOrderStatusBadge({ workOrder, refreshKey }) {
     workOrder.status === "Approved" ||
     workOrder.status === "Completed"
   ) {
-    label = "Approved / Closed";
+    label = ui("Approved / Closed");
     badgeStatus = "Approved";
   }
 
   if (workOrder.status === "Needs Emergency Information") {
-    label = "Emergency information required";
+    label = ui("Emergency information required");
   }
 
   if (needsCompletion) {
@@ -100,7 +101,7 @@ function WorkOrderStatusBadge({ workOrder, refreshKey }) {
           className="status-badge status-pending-approval"
           role="status"
         >
-          Loading status…
+          {ui("Loading status…")}
         </span>
       );
     }
@@ -113,37 +114,37 @@ function WorkOrderStatusBadge({ workOrder, refreshKey }) {
           title={completionState.error}
           onClick={() => setRetry((value) => value + 1)}
         >
-          Status unavailable · Retry
+          {ui("Status unavailable · Retry")}
         </button>
       );
     }
 
     const latest = completionState.latest;
 
-    label = "Work in progress";
+    label = ui("Work in progress");
     badgeStatus = "In Progress";
 
     if (latest) {
       badgeStatus = latest.status;
-      title = `Completion report ${latest.completion_number}`;
+      title = ui("Completion report {number}", { number: latest.completion_number });
 
       const reviewLabels = {
-        "Pending President Approval": "Awaiting President review",
-        "Pending Treasurer Approval": "Awaiting Treasurer review",
-        "Pending Board Member Approval": "Awaiting Board Member review",
+        "Pending President Approval": ui("Awaiting President review"),
+        "Pending Treasurer Approval": ui("Awaiting Treasurer review"),
+        "Pending Board Member Approval": ui("Awaiting Board Member review"),
       };
 
       if (reviewLabels[latest.status]) {
         label = reviewLabels[latest.status];
       } else if (/reject/i.test(latest.status)) {
-        label = "Completion rejected";
+        label = ui("Completion rejected");
         badgeStatus = "Rejected";
         title += ` · ${latest.status} · A new report is required`;
       } else if (latest.status === "Approved") {
-        label = "Completion approved, awaiting closure";
+        label = ui("Completion approved, awaiting closure");
         badgeStatus = "Pending Approval";
       } else {
-        label = `Completion · ${statusLabel(latest.status)}`;
+        label = ui("Completion · {status}", { status: statusLabel(latest.status) });
       }
     }
   }
@@ -163,6 +164,7 @@ function WorkOrderStatusBadge({ workOrder, refreshKey }) {
 }
 
 function WOAttachmentsCell({ workOrderNumber, userRole, refreshKey }) {
+  const { ui } = useLanguage();
   const [attachments, setAttachments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
@@ -200,7 +202,7 @@ function WOAttachmentsCell({ workOrderNumber, userRole, refreshKey }) {
     api(attachmentsUrl, { signal: controller.signal })
       .then((result) => {
         if (!Array.isArray(result)) {
-          throw new Error("Invalid attachment list.");
+          throw new Error(ui("Invalid attachment list."));
         }
 
         if (active) setAttachments(result);
@@ -208,7 +210,7 @@ function WOAttachmentsCell({ workOrderNumber, userRole, refreshKey }) {
       .catch((err) => {
         if (active) {
           setAttachments([]);
-          setError(err.message || "Unable to load attachments.");
+          setError(err.message || ui("Unable to load attachments."));
         }
       })
       .finally(() => {
@@ -236,7 +238,7 @@ function WOAttachmentsCell({ workOrderNumber, userRole, refreshKey }) {
         attachment.original_filename
       );
     } catch (err) {
-      setError(err.message || "Unable to download attachment.");
+      setError(err.message || ui("Unable to download attachment."));
     } finally {
       downloadLock.current = false;
       setDownloading(null);
@@ -255,15 +257,15 @@ function WOAttachmentsCell({ workOrderNumber, userRole, refreshKey }) {
       });
       setWorkOrders((current) => current.filter((item) => item.id !== id));
     } catch (error) {
-      setError(error.message || "Unable to delete work order.");
+      setError(error.message || ui("Unable to delete work order."));
     } finally {
       lock.current = false;
       setBusy(false);
     }
   }
 
-  if (!canRead) return <span>Not permitted</span>;
-  if (loading) return <span>Loading…</span>;
+  if (!canRead) return <span>{ui("Not permitted")}</span>;
+  if (loading) return <span>{ui("Loading…")}</span>;
 
   return (
     <div>
@@ -276,7 +278,7 @@ function WOAttachmentsCell({ workOrderNumber, userRole, refreshKey }) {
             type="button"
             onClick={() => setRetry((value) => value + 1)}
           >
-            Refresh attachments
+            {ui("Refresh attachments")}
           </button>
         </div>
       )}
@@ -306,8 +308,8 @@ function WOAttachmentsCell({ workOrderNumber, userRole, refreshKey }) {
                     onClick={() => downloadAttachment(attachment)}
                   >
                     {downloading === attachment.attachment_number
-                      ? "Downloading…"
-                      : "Download"}
+                      ? ui("Downloading…")
+                      : ui("Download")}
                   </button>
                 </li>
               ))}
@@ -333,6 +335,7 @@ export default function WorkOrderTable({
   onRejectWorkOrder,
   onOpenReport,
 }) {
+  const { ui } = useLanguage();
   const { formatCurrency, statusLabel, t, valueLabel } = useLanguage();
 
   const canSubmitReports = [
@@ -359,7 +362,7 @@ export default function WorkOrderTable({
             <th>{t("workOrderTable.category")}</th>
             <th>{t("workOrderTable.priority")}</th>
             <th>{t("workOrderTable.status")}</th>
-            <th>Progress</th>
+            <th>{ui("Progress")}</th>
             <th>{t("Attachments")}</th>
             <th>{t("workOrderTable.actions")}</th>
             
@@ -425,12 +428,12 @@ export default function WorkOrderTable({
                         className="table-action-button"
                         disabled={disabled}
                         onClick={() => {
-                          if (window.confirm("Delete this draft work order?")) {
+                          if (window.confirm(ui("Delete this draft work order?"))) {
                             onDeleteDraft(workOrder.id);
                           }
                         }}
                       >
-                        Delete draft
+                        {ui("Delete draft")}
                       </button>
                       )}
 
@@ -443,8 +446,8 @@ export default function WorkOrderTable({
                     >
                       {canSubmitReports &&
                       workOrder.status === "Needs Emergency Information"
-                        ? "Emergency info"
-                        : "Emergency reports"}
+                        ? ui("Emergency info")
+                        : ui("Emergency reports")}
                     </button>
                   )}
 
@@ -453,7 +456,7 @@ export default function WorkOrderTable({
                     disabled={disabled}
                     onClick={() => onOpenReport(workOrder.id, "completion")}
                   >
-                    Completion reports
+                    {ui("Completion reports")}
                   </button>
 
                   {canViewAudit && (
@@ -462,7 +465,7 @@ export default function WorkOrderTable({
                       disabled={disabled}
                       onClick={() => onOpenReport(workOrder.id, "audit")}
                     >
-                      Audit trail
+                      {ui("Audit trail")}
                     </button>
                   )}
 
@@ -503,7 +506,7 @@ export default function WorkOrderTable({
 
           {!disabled && workOrders.length === 0 && (
             <tr>
-              <td colSpan={9}>No work orders found.</td>
+              <td colSpan={9}>{ui("No work orders found.")}</td>
             </tr>
           )}
         </tbody>

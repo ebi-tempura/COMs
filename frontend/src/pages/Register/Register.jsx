@@ -1,3 +1,4 @@
+import { useLanguage } from "../../i18n/LanguageContext";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
@@ -17,6 +18,7 @@ function readDraft() {
 }
 
 export default function Register() {
+  const { ui } = useLanguage();
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
   const [draft] = useState(readDraft);
@@ -70,7 +72,7 @@ export default function Register() {
     event.preventDefault();
     
     if (!acceptedTerms) {
-      setError("Please accept the therms and conditions to continue with the registration");
+      setError(ui("Please accept the therms and conditions to continue with the registration"));
       return
     }
 
@@ -103,7 +105,7 @@ export default function Register() {
       };
 
       if (Object.values(registration).some((value) => !value)) {
-        throw new Error("Please complete all building and administrator details.");
+        throw new Error(ui("Please complete all building and administrator details."));
       }
 
       if (
@@ -111,17 +113,17 @@ export default function Register() {
         currentSession.user.email?.toLowerCase() !== email
       ) {
         throw new Error(
-          "The email must match the account currently signed in."
+          ui("The email must match the account currently signed in.")
         );
       }
 
       if (!currentSession && !pending) {
         if (password.length < 8) {
-          throw new Error("Use a password with at least 8 characters.");
+          throw new Error(ui("Use a password with at least 8 characters."));
         }
 
         if (password !== confirmPassword) {
-          throw new Error("Passwords do not match.");
+          throw new Error(ui("Passwords do not match."));
         }
       }
 
@@ -158,15 +160,14 @@ export default function Register() {
 
         if (!activeSession) {
           setNotice(
-            "Check your email for the confirmation link. After confirming, " +
-            "return here to finish registration. Your building has not been created yet."
+            ui("Check your email for the confirmation link. After confirming, return here to finish registration. Your building has not been created yet.")
           );
           return;
         }
       }
 
       if (!activeSession) {
-        throw new Error("Please sign in to finish registration.");
+        throw new Error(ui("Please sign in to finish registration."));
       }
 
       const account = await api("/api/register", {
@@ -186,7 +187,7 @@ export default function Register() {
 
       refreshUser();
     } catch (err) {
-      setError(err.message || "Unable to complete registration.");
+      setError(err.message || ui("Unable to complete registration."));
     } finally {
       submitting.current = false;
       setBusy(false);
@@ -200,19 +201,18 @@ export default function Register() {
           <div className="login-logo">
              <img src="/Logo-blue.png" alt="PAX Aurora" />
           </div>
-          <h1>Your building is ready</h1>
+          <h1>{ui("Your building is ready")}</h1>
           <p>
-            {createdAccount.building_name} has been registered.
-            You are its first Admin.
+            {createdAccount.building_name} {ui("has been registered. You are its first Admin.")}
           </p>
-          <p>Account: {createdAccount.account_id}</p>
+          <p>{ui("Account:")} {createdAccount.account_id}</p>
 
           <button
             className="button"
             type="button"
             onClick={() => navigate("/login", { replace: true })}
           >
-            Continue
+            {ui("Continue")}
           </button>
         </section>
       </main>
@@ -226,15 +226,15 @@ export default function Register() {
           <div className="login-logo">
             <img src="/Logo-blue.png" alt="PAX Aurora" />
           </div>
-          <h1>You already belong to a building</h1>
-          <p>This account is connected to {user.account_id}.</p>
+          <h1>{ui("You already belong to a building")}</h1>
+          <p>{ui("This account is connected to")} {user.account_id}.</p>
 
           <button
             className="button"
             type="button"
             onClick={() => navigate("/work-orders")}
           >
-            Go to your building
+            {ui("Go to your building")}
           </button>
         </section>
       </main>
@@ -250,8 +250,8 @@ export default function Register() {
         <div className="login-logo">
           <img src="/Logo-blue.png" alt="PAX Aurora" />
         </div>
-        <h1>Register your building</h1>
-        <p>Create a building account and become its first Admin.</p>
+        <h1>{ui("Register your building")}</h1>
+        <p>{ui("Create a building account and become its first Admin.")}</p>
 
         <form className="login-form" onSubmit={handleSubmit}>
           {error && (
@@ -263,7 +263,7 @@ export default function Register() {
           {notice && <p role="status">{notice}</p>}
 
           {checkingSession && (
-            <p role="status">Checking your session…</p>
+            <p role="status">{ui("Checking your session…")}</p>
           )}
 
           <fieldset
@@ -271,34 +271,34 @@ export default function Register() {
             disabled={busy || checkingSession}
             style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
           >
-            <legend>Building information</legend>
+            <legend>{ui("Building information")}</legend>
 
             <label>
-              Condominium / account name
+              {ui("Condominium / account name")}
               <input
                 name="account_name"
                 value={form.account_name}
                 onChange={changeField}
-                placeholder="e.g. Condominio La Capital"
+                placeholder={ui("e.g. Condominio La Capital")}
                 maxLength={200}
                 required
               />
             </label>
 
             <label>
-              Building name
+              {ui("Building name")}
               <input
                 name="building_name"
                 value={form.building_name}
                 onChange={changeField}
-                placeholder="e.g. Tower A"
+                placeholder={ui("e.g. Tower A")}
                 maxLength={200}
                 required
               />
             </label>
 
             <label>
-              Building address
+              {ui("Building address")}
               <input
                 name="building_address"
                 value={form.building_address}
@@ -309,10 +309,10 @@ export default function Register() {
               />
             </label>
 
-            <h2>Administrator information</h2>
+            <h2>{ui("Administrator information")}</h2>
 
             <label>
-              First name
+              {ui("First name")}
               <input
                 name="first_name"
                 value={form.first_name}
@@ -324,7 +324,7 @@ export default function Register() {
             </label>
 
             <label>
-              Last name
+              {ui("Last name")}
               <input
                 name="last_name"
                 value={form.last_name}
@@ -336,7 +336,7 @@ export default function Register() {
             </label>
 
             <label>
-              Email
+              {ui("Email")}
               <input
                 name="email"
                 type="email"
@@ -353,14 +353,12 @@ export default function Register() {
               <>
                 {pending && (
                   <p>
-                    Confirm your email, then enter your password below
-                    to finish creating your building.
-                    If you already confirmed, you can continue now.
+                    {ui("Confirm your email, then enter your password below to finish creating your building. If you already confirmed, you can continue now.")}
                   </p>
                 )}
 
                 <label>
-                  Password
+                  {ui("Password")}
                   <input
                     type="password"
                     value={password}
@@ -376,7 +374,7 @@ export default function Register() {
 
                 {needsSignup && (
                   <label>
-                    Confirm password
+                    {ui("Confirm password")}
                     <input
                       type="password"
                       value={confirmPassword}
@@ -395,8 +393,7 @@ export default function Register() {
 
             {session && (
               <p>
-                Signed in as {session.user.email}.
-                Complete your details to create the building.
+                {ui("Signed in as")} {session.user.email}{ui(". Complete your details to create the building.")}
               </p>
             )}
               <div>
@@ -423,7 +420,7 @@ export default function Register() {
 
                 <span>
                   <label htmlFor="acceptedTerms" style={{ display: "inline" }}>
-                    I accept the{" "}
+                    {ui("I accept the")}{" "}
                   </label>
 
                   <button
@@ -440,7 +437,7 @@ export default function Register() {
                       font: "inherit",
                     }}
                   >
-                    Terms and Conditions
+                    {ui("Terms and Conditions")}
                   </button>
                 </span>
               </div>
@@ -448,10 +445,10 @@ export default function Register() {
             
             <button className="button" type="submit">
               {busy
-                ? "Please wait…"
+                ? ui("Please wait…")
                 : session || pending
-                  ? "Finish building registration"
-                  : "Create account"}
+                  ? ui("Finish building registration")
+                  : ui("Create account")}
             </button>
 
             {!session && (
@@ -466,8 +463,8 @@ export default function Register() {
                 }}
               >
                 {pending
-                  ? "Use a new email account"
-                  : "Already signed up? Finish registration"}
+                  ? ui("Use a new email account")
+                  : ui("Already signed up? Finish registration")}
               </button>
             )}
 
@@ -476,7 +473,7 @@ export default function Register() {
                 type="submit"
                 onClick={() => navigate("/login")}
               >
-              Back to login
+              {ui("Back to login")}
             </button>
           </fieldset>
         </form>
@@ -501,39 +498,27 @@ export default function Register() {
                   lineHeight: 1.6,
                 }}
               >
-                <h2 id="terms-title">Terms and Conditions</h2>
+                <h2 id="terms-title">{ui("Terms and Conditions")}</h2>
 
-                <h3>Your data stays yours</h3>
+                <h3>{ui("Your data stays yours")}</h3>
                 <p>
-                  COMs processes building, user, and supplier information only to
-                  provide, secure, and support the service, follow your instructions,
-                  or meet legal obligations.
+                  {ui("COMs processes building, user, and supplier information only to provide, secure, and support the service, follow your instructions, or meet legal obligations.")}
                 </p>
                 <p>
-                  We do not sell or rent this information, use it for advertising,
-                  approach your suppliers for business, or share user and supplier
-                  contacts for marketing.
+                  {ui("We do not sell or rent this information, use it for advertising, approach your suppliers for business, or share user and supplier contacts for marketing.")}
                 </p>
                 <p>
-                  Service providers may process information only as necessary to
-                  deliver the service, subject to confidentiality and restrictions
-                  on independent use.
+                  {ui("Service providers may process information only as necessary to deliver the service, subject to confidentiality and restrictions on independent use.")}
                 </p>
 
-                <h3>Protection of the platform</h3>
+                <h3>{ui("Protection of the platform")}</h3>
                 <p>
-                  Except where permitted by applicable law or authorized in writing,
-                  you must not copy, distribute, reverse engineer, decompile, or
-                  attempt to extract the platform’s source code. You must not use
-                  its proprietary code or confidential information to create or
-                  help others create a competing product.
+                  {ui("Except where permitted by applicable law or authorized in writing, you must not copy, distribute, reverse engineer, decompile, or attempt to extract the platform’s source code. You must not use its proprietary code or confidential information to create or help others create a competing product.")}
                 </p>
 
-                <h3>Registering for an organization</h3>
+                <h3>{ui("Registering for an organization")}</h3>
                 <p>
-                  If registering for a company, condominium association, or other
-                  organization, you confirm that you are authorized to accept these
-                  terms on its behalf.
+                  {ui("If registering for a company, condominium association, or other organization, you confirm that you are authorized to accept these terms on its behalf.")}
                 </p>
 
                 <button
@@ -541,7 +526,7 @@ export default function Register() {
                   type="button"
                   onClick={() => setShowTerms(false)}
                 >
-                  Close
+                  {ui("Close")}
                 </button>
               </dialog>
             )}
